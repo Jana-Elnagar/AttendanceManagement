@@ -17,7 +17,7 @@ using Volo.Abp.Identity;
 
 namespace AttendanceManagement.Data
 {
-    public class AttendanceManagementDataSeedContributer : IDataSeedContributor, ITransientDependency
+    public class AttendanceManagementDataSeeder : IDataSeedContributor, ITransientDependency
     {
         private readonly IRepository<Employee, Guid> _employeeRepository;
         private readonly IRepository<Group, Guid> _groupRepository;
@@ -38,7 +38,7 @@ namespace AttendanceManagement.Data
         private Guid _employee4UserId;
         private Guid _employee5UserId;
 
-        public AttendanceManagementDataSeedContributer(
+        public AttendanceManagementDataSeeder(
             IRepository<Employee, Guid> employeeRepository,
             IRepository<Group, Guid> groupRepository,
             IRepository<Schedule, Guid> scheduleRepository,
@@ -72,8 +72,14 @@ namespace AttendanceManagement.Data
             // Seed Groups first (before employees)
             var groups = await SeedGroupsAsync();
 
-            // Seed Employees with group assignments
-            var employees = await SeedEmployeesAsync(groups);
+            // Seed Workflows (before employees so we can assign them)
+            var workflows = await SeedWorkflowsAsync(employees: null);
+
+            // Seed Employees with group assignments and workflow assignments
+            var employees = await SeedEmployeesAsync(groups, workflows);
+
+            // Update workflow steps with actual employee IDs now that employees exist
+            await UpdateWorkflowStepsWithEmployeeIds(workflows, employees);
 
             // Seed Manager Assignments (attach to employee aggregates and update)
             await SeedManagerAssignmentsAsync(employees);
@@ -83,9 +89,6 @@ namespace AttendanceManagement.Data
 
             // Seed Schedule Assignments (attach to schedule aggregates and update)
             await SeedScheduleAssignmentsAsync(schedules, employees, groups);
-
-            // Seed Workflows per Employee (workflow is an aggregate; add steps to Workflow.WorkflowSteps before inserting)
-            await SeedWorkflowsAsync(employees);
         }
 
         private async Task SeedIdentityUsersAsync()
@@ -159,7 +162,9 @@ namespace AttendanceManagement.Data
             return groups;
         }
 
-        private async Task<Dictionary<string, Employee>> SeedEmployeesAsync(Dictionary<string, Group> groups)
+        private async Task<Dictionary<string, Employee>> SeedEmployeesAsync(
+            Dictionary<string, Group> groups,
+            Dictionary<string, Workflow> workflows)
         {
             var employees = new Dictionary<string, Employee>();
 
@@ -178,6 +183,7 @@ namespace AttendanceManagement.Data
                 ScheduleAssignments = new List<ScheduleAssignment>(),
                 ExceptionRequests = new List<ExceptionRequest>()
             };
+            hrManager.AssignWorkflow(null); // HR doesn't need workflow
             employees["hrmanager"] = hrManager;
 
             // Managers
@@ -195,6 +201,7 @@ namespace AttendanceManagement.Data
                 ScheduleAssignments = new List<ScheduleAssignment>(),
                 ExceptionRequests = new List<ExceptionRequest>()
             };
+            manager1.AssignWorkflow(workflows["manager"].Id);
             employees["manager1"] = manager1;
 
             var manager2 = new Employee(
@@ -211,26 +218,10 @@ namespace AttendanceManagement.Data
                 ScheduleAssignments = new List<ScheduleAssignment>(),
                 ExceptionRequests = new List<ExceptionRequest>()
             };
+            manager2.AssignWorkflow(workflows["manager"].Id);
             employees["manager2"] = manager2;
 
-            //// Doctor (no group)
-            //var doctor = new Employee(
-            //    _guidGenerator.Create(),
-            //    _doctorUserId,
-            //    "Dr. Smith",
-            //    "Medical",
-            //    "Occupational Health",
-            //    null
-            //)
-            //{
-            //    //ManagerAssignments = new List<ManagerAssignment>(),
-            //    //ManagedEmployees = new List<ManagerAssignment>(),
-            //    //ScheduleAssignments = new List<ScheduleAssignment>(),
-            //    //ExceptionRequests = new List<ExceptionRequest>()
-            //};
-            //employees["doctor"] = doctor;
-
-            // Regular Employees
+            // Regular Employees - Junior Level
             var emp1 = new Employee(
                 _guidGenerator.Create(),
                 _employee1UserId,
@@ -245,6 +236,7 @@ namespace AttendanceManagement.Data
                 ScheduleAssignments = new List<ScheduleAssignment>(),
                 ExceptionRequests = new List<ExceptionRequest>()
             };
+            emp1.AssignWorkflow(workflows["junior"].Id);
             employees["emp1"] = emp1;
 
             var emp2 = new Employee(
@@ -261,8 +253,10 @@ namespace AttendanceManagement.Data
                 ScheduleAssignments = new List<ScheduleAssignment>(),
                 ExceptionRequests = new List<ExceptionRequest>()
             };
+            emp2.AssignWorkflow(workflows["junior"].Id);
             employees["emp2"] = emp2;
 
+            // Regular Employees - Senior Level
             var emp3 = new Employee(
                 _guidGenerator.Create(),
                 _employee3UserId,
@@ -277,6 +271,7 @@ namespace AttendanceManagement.Data
                 ScheduleAssignments = new List<ScheduleAssignment>(),
                 ExceptionRequests = new List<ExceptionRequest>()
             };
+            emp3.AssignWorkflow(workflows["senior"].Id);
             employees["emp3"] = emp3;
 
             var emp4 = new Employee(
@@ -293,6 +288,7 @@ namespace AttendanceManagement.Data
                 ScheduleAssignments = new List<ScheduleAssignment>(),
                 ExceptionRequests = new List<ExceptionRequest>()
             };
+            emp4.AssignWorkflow(workflows["senior"].Id);
             employees["emp4"] = emp4;
 
             var emp5 = new Employee(
@@ -309,6 +305,7 @@ namespace AttendanceManagement.Data
                 ScheduleAssignments = new List<ScheduleAssignment>(),
                 ExceptionRequests = new List<ExceptionRequest>()
             };
+            emp5.AssignWorkflow(workflows["senior"].Id);
             employees["emp5"] = emp5;
 
             await _employeeRepository.InsertManyAsync(employees.Values);
@@ -360,28 +357,23 @@ namespace AttendanceManagement.Data
                 )
             };
 
-            // Attach assignments to aggregates and update affected employee aggregates
-            var employeesToUpdate = new HashSet<Employee>();
-
+            // Attach assignments to employee aggregates
             foreach (var assignment in assignments)
             {
                 var employee = employees.Values.First(e => e.Id == assignment.EmployeeId);
                 var manager = employees.Values.First(e => e.Id == assignment.ManagerEmployeeId);
 
-                employee.ManagerAssignments ??= new List<ManagerAssignment>();
-                manager.ManagedEmployees ??= new List<ManagerAssignment>();
-
                 employee.ManagerAssignments.Add(assignment);
                 manager.ManagedEmployees.Add(assignment);
-
-                employeesToUpdate.Add(employee);
-                employeesToUpdate.Add(manager);
             }
 
-            // Persist changes via aggregate repository updates
-            foreach (var emp in employeesToUpdate)
+            // Update employee aggregates (this will cascade save the assignments)
+            foreach (var emp in employees.Values)
             {
-                await _employeeRepository.UpdateAsync(emp);
+                if (emp.ManagerAssignments.Any() || emp.ManagedEmployees.Any())
+                {
+                    await _employeeRepository.UpdateAsync(emp);
+                }
             }
         }
 
@@ -535,138 +527,234 @@ namespace AttendanceManagement.Data
                     schedules["full_remote"].Id,
                     DateTime.UtcNow.AddMonths(-3),
                     employeeId: employees["manager1"].Id
-                ) { SeatNumber = "Remote", FloorNumber = "Remote" },
+                ),
 
                 new ScheduleAssignment(
                     _guidGenerator.Create(),
                     schedules["full_remote"].Id,
                     DateTime.UtcNow.AddMonths(-3),
                     employeeId: employees["manager2"].Id
-                ) { SeatNumber = "Remote", FloorNumber = "Remote" },
+                ),
 
                 new ScheduleAssignment(
                     _guidGenerator.Create(),
                     schedules["full_remote"].Id,
                     DateTime.UtcNow.AddMonths(-3),
                     employeeId: employees["hrmanager"].Id
-                ) { SeatNumber = "Remote", FloorNumber = "Remote" }
+                )
             };
 
-            // Attach assignments to schedule aggregates and corresponding employee aggregates, then persist schedules
-            var schedulesToUpdate = new HashSet<Schedule>();
-            var employeesToUpdate = new HashSet<Employee>();
-
+            // Attach assignments to schedule and employee aggregates
             foreach (var assignment in assignments)
             {
                 var schedule = schedules.Values.First(s => s.Id == assignment.ScheduleId);
-                schedule.ScheduleAssignments ??= new List<ScheduleAssignment>();
                 schedule.ScheduleAssignments.Add(assignment);
-                schedulesToUpdate.Add(schedule);
 
                 if (assignment.EmployeeId.HasValue)
                 {
                     var emp = employees.Values.First(e => e.Id == assignment.EmployeeId.Value);
-                    emp.ScheduleAssignments ??= new List<ScheduleAssignment>();
                     emp.ScheduleAssignments.Add(assignment);
-                    employeesToUpdate.Add(emp);
                 }
 
                 if (assignment.GroupId.HasValue)
                 {
                     var grp = groups.Values.First(g => g.Id == assignment.GroupId.Value);
-                    grp.ScheduleAssignments ??= new List<ScheduleAssignment>();
                     grp.ScheduleAssignments.Add(assignment);
-                    // groups aren't updated here because AddDefaultRepositories for Group exists; optionally update group repository if needed
                 }
             }
 
-            // Persist schedules (cascade will insert ScheduleAssignment children)
-            foreach (var sch in schedulesToUpdate)
+            // Update schedule aggregates (will cascade save assignments)
+            foreach (var schedule in schedules.Values)
             {
-                await _scheduleRepository.UpdateAsync(sch);
+                if (schedule.ScheduleAssignments.Any())
+                {
+                    await _scheduleRepository.UpdateAsync(schedule);
+                }
             }
 
-            // Persist employee aggregate updates where we added schedule assignments or manager assignments earlier
-            foreach (var emp in employeesToUpdate)
+            // Update employee aggregates if they have schedule assignments
+            foreach (var emp in employees.Values)
             {
-                await _employeeRepository.UpdateAsync(emp);
+                if (emp.ScheduleAssignments.Any())
+                {
+                    await _employeeRepository.UpdateAsync(emp);
+                }
             }
         }
 
-        private async Task SeedWorkflowsAsync(Dictionary<string, Employee> employees)
+        private async Task<Dictionary<string, Workflow>> SeedWorkflowsAsync(Dictionary<string, Employee> employees)
         {
-            // Create workflows per employee
-            var workflows = new List<Workflow>();
+            // Create hierarchical workflows before employees are created
+            var workflows = new Dictionary<string, Workflow>();
 
-            // Standard workflow for employees with managers
-            var standardEmployees = new[] { "emp1", "emp2", "emp3", "emp4", "emp5" };
-
-            foreach (var empKey in standardEmployees)
+            // Workflow 1: Junior Level (Senior -> Team Lead -> Department Lead/HR)
+            var juniorWorkflow = new Workflow(
+                _guidGenerator.Create(),
+                "Junior Employee Workflow",
+                "3-step approval: Senior -> Team Lead -> Department Lead"
+            )
             {
-                var employee = employees[empKey];
-                var workflow = new Workflow(
-                    _guidGenerator.Create(),
-                    $"Workflow for {employee.Name}",
-                    $"Standard approval workflow for {employee.Name}",
-                    employee.Id
-                )
-                {
-                    WorkflowSteps = new List<WorkflowStep>()
-                };
+                WorkflowSteps = new List<WorkflowStep>()
+            };
+            workflows["junior"] = juniorWorkflow;
 
-                // Determine manager
-                var managerId = empKey == "emp1" || empKey == "emp2" || empKey == "emp5"
-                    ? employees["manager1"].Id
-                    : employees["manager2"].Id;
+            // Workflow 2: Senior Level (Team Lead -> Department Lead/HR)
+            var seniorWorkflow = new Workflow(
+                _guidGenerator.Create(),
+                "Senior Employee Workflow",
+                "2-step approval: Team Lead -> Department Lead"
+            )
+            {
+                WorkflowSteps = new List<WorkflowStep>()
+            };
+            workflows["senior"] = seniorWorkflow;
 
-                // Step 1: Manager Approval
-                workflow.WorkflowSteps.Add(new WorkflowStep(
+            // Workflow 3: Manager/Team Lead Level (Department Lead/HR only)
+            var managerWorkflow = new Workflow(
+                _guidGenerator.Create(),
+                "Manager Workflow",
+                "1-step approval: Department Lead/HR"
+            )
+            {
+                WorkflowSteps = new List<WorkflowStep>()
+            };
+            workflows["manager"] = managerWorkflow;
+
+            // If employees are already seeded, add the steps with actual employee IDs
+            if (employees != null && employees.Any())
+            {
+                // Junior workflow steps
+                juniorWorkflow.WorkflowSteps.Add(new WorkflowStep(
                     _guidGenerator.Create(),
-                    workflow.Id,
+                    juniorWorkflow.Id,
                     1,
                     ApproverType.Manager,
-                    managerId
+                    employees["manager1"].Id // Senior/Direct Manager
+                ));
+                juniorWorkflow.WorkflowSteps.Add(new WorkflowStep(
+                    _guidGenerator.Create(),
+                    juniorWorkflow.Id,
+                    2,
+                    ApproverType.Manager,
+                    employees["manager2"].Id // Team Lead
+                ));
+                juniorWorkflow.WorkflowSteps.Add(new WorkflowStep(
+                    _guidGenerator.Create(),
+                    juniorWorkflow.Id,
+                    3,
+                    ApproverType.HRManager,
+                    employees["hrmanager"].Id // Department Lead/HR
                 ));
 
-                // Step 2: HR Manager Approval
-                workflow.WorkflowSteps.Add(new WorkflowStep(
+                // Senior workflow steps
+                seniorWorkflow.WorkflowSteps.Add(new WorkflowStep(
                     _guidGenerator.Create(),
-                    workflow.Id,
+                    seniorWorkflow.Id,
+                    1,
+                    ApproverType.Manager,
+                    employees["manager2"].Id // Team Lead
+                ));
+                seniorWorkflow.WorkflowSteps.Add(new WorkflowStep(
+                    _guidGenerator.Create(),
+                    seniorWorkflow.Id,
                     2,
                     ApproverType.HRManager,
-                    employees["hrmanager"].Id
+                    employees["hrmanager"].Id // Department Lead/HR
                 ));
 
-                workflows.Add(workflow);
-            }
-
-            // Workflow for managers (only HR approval needed)
-            foreach (var managerKey in new[] { "manager1", "manager2" })
-            {
-                var manager = employees[managerKey];
-                var workflow = new Workflow(
+                // Manager workflow steps
+                managerWorkflow.WorkflowSteps.Add(new WorkflowStep(
                     _guidGenerator.Create(),
-                    $"Workflow for {manager.Name}",
-                    $"Manager approval workflow for {manager.Name}",
-                    manager.Id
-                )
-                {
-                    WorkflowSteps = new List<WorkflowStep>()
-                };
-
-                workflow.WorkflowSteps.Add(new WorkflowStep(
-                    _guidGenerator.Create(),
-                    workflow.Id,
+                    managerWorkflow.Id,
                     1,
                     ApproverType.HRManager,
                     employees["hrmanager"].Id
                 ));
+            }
+            else
+            {
+                // Initial seeding without employees - we'll add placeholder steps
+                // These will be updated later when we know the employee IDs
+                // For now, add steps with null approver IDs (will be updated after employee creation)
 
-                workflows.Add(workflow);
+                // Junior workflow placeholder steps
+                juniorWorkflow.WorkflowSteps.Add(new WorkflowStep(
+                    _guidGenerator.Create(),
+                    juniorWorkflow.Id,
+                    1,
+                    ApproverType.Manager,
+                    null
+                ));
+                juniorWorkflow.WorkflowSteps.Add(new WorkflowStep(
+                    _guidGenerator.Create(),
+                    juniorWorkflow.Id,
+                    2,
+                    ApproverType.Manager,
+                    null
+                ));
+                juniorWorkflow.WorkflowSteps.Add(new WorkflowStep(
+                    _guidGenerator.Create(),
+                    juniorWorkflow.Id,
+                    3,
+                    ApproverType.HRManager,
+                    null
+                ));
+
+                // Senior workflow placeholder steps
+                seniorWorkflow.WorkflowSteps.Add(new WorkflowStep(
+                    _guidGenerator.Create(),
+                    seniorWorkflow.Id,
+                    1,
+                    ApproverType.Manager,
+                    null
+                ));
+                seniorWorkflow.WorkflowSteps.Add(new WorkflowStep(
+                    _guidGenerator.Create(),
+                    seniorWorkflow.Id,
+                    2,
+                    ApproverType.HRManager,
+                    null
+                ));
+
+                // Manager workflow placeholder steps
+                managerWorkflow.WorkflowSteps.Add(new WorkflowStep(
+                    _guidGenerator.Create(),
+                    managerWorkflow.Id,
+                    1,
+                    ApproverType.HRManager,
+                    null
+                ));
             }
 
             // Insert workflows with steps as children of the Workflow aggregate
-            await _workflowRepository.InsertManyAsync(workflows);
+            await _workflowRepository.InsertManyAsync(workflows.Values);
+
+            return workflows;
+        }
+
+        private async Task UpdateWorkflowStepsWithEmployeeIds(
+            Dictionary<string, Workflow> workflows,
+            Dictionary<string, Employee> employees)
+        {
+            // Update junior workflow steps
+            var juniorWorkflow = workflows["junior"];
+            juniorWorkflow.WorkflowSteps.ElementAt(0).ApproverEmployeeId = employees["manager1"].Id;
+            juniorWorkflow.WorkflowSteps.ElementAt(1).ApproverEmployeeId = employees["manager2"].Id;
+            juniorWorkflow.WorkflowSteps.ElementAt(2).ApproverEmployeeId = employees["hrmanager"].Id;
+
+            // Update senior workflow steps
+            var seniorWorkflow = workflows["senior"];
+            seniorWorkflow.WorkflowSteps.ElementAt(0).ApproverEmployeeId = employees["manager2"].Id;
+            seniorWorkflow.WorkflowSteps.ElementAt(1).ApproverEmployeeId = employees["hrmanager"].Id;
+
+            // Update manager workflow steps
+            var managerWorkflow = workflows["manager"];
+            managerWorkflow.WorkflowSteps.ElementAt(0).ApproverEmployeeId = employees["hrmanager"].Id;
+
+            // Persist the updates
+            await _workflowRepository.UpdateAsync(juniorWorkflow);
+            await _workflowRepository.UpdateAsync(seniorWorkflow);
+            await _workflowRepository.UpdateAsync(managerWorkflow);
         }
     }
 }

@@ -13,11 +13,9 @@ namespace AttendanceManagement.Data.Workflows
     {
         public string Name { get; set; }
         public string Description { get; set; }
-        public Guid? EmployeeId { get; set; } // Workflow assigned per employee by admin
         public bool IsActive { get; set; }
 
         // Navigation properties
-        public virtual Employee Employee { get; set; }
         public virtual ICollection<WorkflowStep> WorkflowSteps { get; set; }
         public virtual ICollection<ExceptionRequest> ExceptionRequests { get; set; }
 
@@ -27,11 +25,10 @@ namespace AttendanceManagement.Data.Workflows
             ExceptionRequests = new List<ExceptionRequest>();
         }
 
-        public Workflow(Guid id, string name, string description, Guid? employeeId = null) : base(id)
+        public Workflow(Guid id, string name, string description) : base(id)
         {
             Name = name;
             Description = description;
-            EmployeeId = employeeId;
             IsActive = true;
             WorkflowSteps = new List<WorkflowStep>();
             ExceptionRequests = new List<ExceptionRequest>();

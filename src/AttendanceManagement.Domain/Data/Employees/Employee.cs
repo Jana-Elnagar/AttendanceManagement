@@ -1,12 +1,13 @@
-﻿using AttendanceManagement.Data.Groups;
+﻿using AttendanceManagement.Data.ExceptionRequests;
+using AttendanceManagement.Data.Groups;
 using AttendanceManagement.Data.Schedules;
+using AttendanceManagement.Data.Workflows;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Volo.Abp.Domain.Entities.Auditing;
-using AttendanceManagement.Data.ExceptionRequests;
 
 namespace AttendanceManagement.Data.Employees
 {
@@ -18,9 +19,11 @@ namespace AttendanceManagement.Data.Employees
         public string Sector { get; set; }
         public bool IsActive { get; set; }
         public Guid? GroupId { get; set; } // Each employee belongs to only one group
+        public Guid? WorkflowId { get; set; } // Admin assigns workflow based on hierarchy
 
         // Navigation properties
         public virtual Group Group { get; set; }
+        public virtual Workflow Workflow { get; set; }
         public virtual ICollection<ManagerAssignment> ManagerAssignments { get; set; }
         public virtual ICollection<ManagerAssignment> ManagedEmployees { get; set; }
         public virtual ICollection<ScheduleAssignment> ScheduleAssignments { get; set; }
@@ -53,6 +56,11 @@ namespace AttendanceManagement.Data.Employees
         public void AssignToGroup(Guid? groupId)
         {
             GroupId = groupId;
+        }
+
+        public void AssignWorkflow(Guid? workflowId)
+        {
+            WorkflowId = workflowId;
         }
     }
 }

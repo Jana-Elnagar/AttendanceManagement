@@ -36,9 +36,15 @@ namespace AttendanceManagement.EntityFrameworkCore
                     .HasForeignKey(e => e.GroupId)
                     .OnDelete(DeleteBehavior.SetNull);
 
+                b.HasOne(e => e.Workflow)
+                    .WithMany()
+                    .HasForeignKey(e => e.WorkflowId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 b.HasIndex(e => e.UserId);
                 b.HasIndex(e => e.IsActive);
                 b.HasIndex(e => e.GroupId);
+                b.HasIndex(e => e.WorkflowId);
             });
 
             // ManagerAssignment Configuration
@@ -105,7 +111,7 @@ namespace AttendanceManagement.EntityFrameworkCore
                 b.ConfigureByConvention();
 
                 b.Property(sa => sa.SeatNumber).HasMaxLength(50);
-                b.Property(sa => sa.FloorNumber).HasMaxLength(50);
+                b.Property(sa => sa.FloorNumber).HasMaxLength(100);
 
                 b.HasOne(sa => sa.Schedule)
                     .WithMany(s => s.ScheduleAssignments)

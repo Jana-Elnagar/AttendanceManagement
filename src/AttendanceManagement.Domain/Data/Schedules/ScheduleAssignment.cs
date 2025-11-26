@@ -16,8 +16,8 @@ namespace AttendanceManagement.Data.Schedules
         public Guid? GroupId { get; set; }
         public DateTime EffectiveFrom { get; set; }
         public DateTime? EffectiveTo { get; set; }
-        public string SeatNumber { get; set; }
-        public string FloorNumber { get; set; }
+        public string? SeatNumber { get; set; }
+        public string? FloorNumber { get; set; }
 
         // Navigation properties
         public virtual Schedule Schedule { get; set; }
