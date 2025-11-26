@@ -12,7 +12,12 @@ using Volo.Abp.PermissionManagement.EntityFrameworkCore;
 using Volo.Abp.SettingManagement.EntityFrameworkCore;
 using Volo.Abp.TenantManagement;
 using Volo.Abp.TenantManagement.EntityFrameworkCore;
-
+using AttendanceManagement.Data.Employees;
+using AttendanceManagement.Data.Groups;
+using AttendanceManagement.Data.ExceptionRequests;
+using AttendanceManagement.Data.Notifications;
+using AttendanceManagement.Data.Schedules;
+using AttendanceManagement.Data.Workflows;
 namespace AttendanceManagement.EntityFrameworkCore;
 
 [ReplaceDbContext(typeof(IIdentityDbContext))]
@@ -24,6 +29,13 @@ public class AttendanceManagementDbContext :
     ITenantManagementDbContext
 {
     /* Add DbSet properties for your Aggregate Roots / Entities here. */
+    DbSet<Employee> Employees { get; set; }
+    DbSet<Workflow> Workflows { get; set; }
+    DbSet<Schedule> Schedules { get; set; }
+    DbSet<Notification> Notifications { get; set; }
+    DbSet<ExceptionRequest> ExceptionRequests { get; set; }
+    DbSet<Group> Groups { get; set; }  
+
 
     #region Entities from the modules
 
@@ -75,12 +87,7 @@ public class AttendanceManagementDbContext :
         builder.ConfigureTenantManagement();
 
         /* Configure your own tables/entities inside here */
+        builder.ConfigureAttendanceManagement();
 
-        //builder.Entity<YourEntity>(b =>
-        //{
-        //    b.ToTable(AttendanceManagementConsts.DbTablePrefix + "YourEntities", AttendanceManagementConsts.DbSchema);
-        //    b.ConfigureByConvention(); //auto configure for the base class props
-        //    //...
-        //});
     }
 }
