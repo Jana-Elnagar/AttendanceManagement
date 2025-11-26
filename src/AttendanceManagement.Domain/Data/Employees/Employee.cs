@@ -17,9 +17,10 @@ namespace AttendanceManagement.Data.Employees
         public string Department { get; set; }
         public string Sector { get; set; }
         public bool IsActive { get; set; }
+        public Guid? GroupId { get; set; } // Each employee belongs to only one group
 
         // Navigation properties
-        public virtual ICollection<GroupMembership> GroupMemberships { get; set; }
+        public virtual Group Group { get; set; }
         public virtual ICollection<ManagerAssignment> ManagerAssignments { get; set; }
         public virtual ICollection<ManagerAssignment> ManagedEmployees { get; set; }
         public virtual ICollection<ScheduleAssignment> ScheduleAssignments { get; set; }
@@ -27,27 +28,31 @@ namespace AttendanceManagement.Data.Employees
 
         protected Employee()
         {
-            GroupMemberships = new List<GroupMembership>();
             ManagerAssignments = new List<ManagerAssignment>();
             ManagedEmployees = new List<ManagerAssignment>();
             ScheduleAssignments = new List<ScheduleAssignment>();
             ExceptionRequests = new List<ExceptionRequest>();
         }
 
-        public Employee(Guid id, Guid userId, string name, string department, string sector)
+        public Employee(Guid id, Guid userId, string name, string department, string sector, Guid? groupId = null)
             : base(id)
         {
             UserId = userId;
             Name = name;
             Department = department;
             Sector = sector;
+            GroupId = groupId;
             IsActive = true;
 
-            GroupMemberships = new List<GroupMembership>();
             ManagerAssignments = new List<ManagerAssignment>();
             ManagedEmployees = new List<ManagerAssignment>();
             ScheduleAssignments = new List<ScheduleAssignment>();
             ExceptionRequests = new List<ExceptionRequest>();
+        }
+
+        public void AssignToGroup(Guid? groupId)
+        {
+            GroupId = groupId;
         }
     }
 }

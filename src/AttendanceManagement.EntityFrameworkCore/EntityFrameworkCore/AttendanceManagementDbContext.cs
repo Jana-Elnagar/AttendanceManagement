@@ -29,12 +29,12 @@ public class AttendanceManagementDbContext :
     ITenantManagementDbContext
 {
     /* Add DbSet properties for your Aggregate Roots / Entities here. */
-    DbSet<Employee> Employees { get; set; }
-    DbSet<Workflow> Workflows { get; set; }
-    DbSet<Schedule> Schedules { get; set; }
-    DbSet<Notification> Notifications { get; set; }
-    DbSet<ExceptionRequest> ExceptionRequests { get; set; }
-    DbSet<Group> Groups { get; set; }  
+    public DbSet<Employee> Employees { get; set; }
+    public DbSet<Workflow> Workflows { get; set; }
+    public DbSet<Schedule> Schedules { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<ExceptionRequest> ExceptionRequests { get; set; }
+    public DbSet<Group> Groups { get; set; }  
 
 
     #region Entities from the modules

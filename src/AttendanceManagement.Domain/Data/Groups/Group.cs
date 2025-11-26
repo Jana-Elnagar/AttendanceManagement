@@ -1,10 +1,11 @@
-﻿using System;
+﻿using AttendanceManagement.Data.Employees;
+using AttendanceManagement.Data.Schedules;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Volo.Abp.Domain.Entities.Auditing;
-using AttendanceManagement.Data.Schedules;
 
 namespace AttendanceManagement.Data.Groups
 {
@@ -15,12 +16,12 @@ namespace AttendanceManagement.Data.Groups
         public bool IsActive { get; set; }
 
         // Navigation properties
-        public virtual ICollection<GroupMembership> GroupMemberships { get; set; }
+        public virtual ICollection<Employee> Employees { get; set; }
         public virtual ICollection<ScheduleAssignment> ScheduleAssignments { get; set; }
 
         protected Group()
         {
-            GroupMemberships = new List<GroupMembership>();
+            Employees = new List<Employee>();
             ScheduleAssignments = new List<ScheduleAssignment>();
         }
 
@@ -29,7 +30,7 @@ namespace AttendanceManagement.Data.Groups
             Name = name;
             Description = description;
             IsActive = true;
-            GroupMemberships = new List<GroupMembership>();
+            Employees = new List<Employee>();
             ScheduleAssignments = new List<ScheduleAssignment>();
         }
     }

@@ -31,8 +31,14 @@ namespace AttendanceManagement.EntityFrameworkCore
                 b.Property(e => e.Department).HasMaxLength(256);
                 b.Property(e => e.Sector).HasMaxLength(256);
 
+                b.HasOne(e => e.Group)
+                    .WithMany(g => g.Employees)
+                    .HasForeignKey(e => e.GroupId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 b.HasIndex(e => e.UserId);
                 b.HasIndex(e => e.IsActive);
+                b.HasIndex(e => e.GroupId);
             });
 
             // ManagerAssignment Configuration
@@ -64,25 +70,6 @@ namespace AttendanceManagement.EntityFrameworkCore
                 b.Property(g => g.Description).HasMaxLength(1000);
 
                 b.HasIndex(g => g.Name);
-            });
-
-            // GroupMembership Configuration
-            builder.Entity<GroupMembership>(b =>
-            {
-                b.ToTable("GroupMemberships");
-                b.ConfigureByConvention();
-
-                b.HasOne(gm => gm.Group)
-                    .WithMany(g => g.GroupMemberships)
-                    .HasForeignKey(gm => gm.GroupId)
-                    .OnDelete(DeleteBehavior.Cascade);
-
-                b.HasOne(gm => gm.Employee)
-                    .WithMany(e => e.GroupMemberships)
-                    .HasForeignKey(gm => gm.EmployeeId)
-                    .OnDelete(DeleteBehavior.Cascade);
-
-                b.HasIndex(gm => new { gm.GroupId, gm.EmployeeId }).IsUnique();
             });
 
             // Schedule Configuration
@@ -235,23 +222,6 @@ namespace AttendanceManagement.EntityFrameworkCore
                     .OnDelete(DeleteBehavior.Cascade);
 
                 b.HasIndex(era => era.ExceptionRequestId);
-            });
-
-            // Notification Configuration
-            builder.Entity<Notification>(b =>
-            {
-                b.ToTable("Notifications");
-                b.ConfigureByConvention();
-
-                b.Property(n => n.Message).IsRequired().HasMaxLength(2000);
-
-                b.HasOne(n => n.RelatedExceptionRequest)
-                    .WithMany(er => er.Notifications)
-                    .HasForeignKey(n => n.RelatedExceptionRequestId)
-                    .OnDelete(DeleteBehavior.SetNull);
-
-                b.HasIndex(n => new { n.UserId, n.IsRead });
-                b.HasIndex(n => n.CreationTime);
             });
         }
     }
