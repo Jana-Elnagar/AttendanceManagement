@@ -31,6 +31,14 @@ namespace AttendanceManagement.EntityFrameworkCore
                 b.Property(e => e.Department).HasMaxLength(256);
                 b.Property(e => e.Sector).HasMaxLength(256);
 
+                b.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict)  // Prevent cascade delete
+                    .IsRequired();                       // UserId is required
+
+                b.HasIndex(e => e.UserId).IsUnique();
+
                 b.HasOne(e => e.Group)
                     .WithMany(g => g.Employees)
                     .HasForeignKey(e => e.GroupId)
