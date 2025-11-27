@@ -8,7 +8,6 @@ public class AttendanceManagementPermissionDefinitionProvider : PermissionDefini
 {
     public override void Define(IPermissionDefinitionContext context)
     {
-        var myGroup = context.AddGroup(AttendanceManagementPermissions.GroupName);
         //Define your own permissions here. Example:
         //myGroup.AddPermission(AttendanceManagementPermissions.MyPermission1, L("Permission:MyPermission1"));
 
