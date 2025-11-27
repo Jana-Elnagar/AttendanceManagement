@@ -12,7 +12,7 @@ namespace AttendanceManagement.Dtos.Employees
         public ScheduleDto CurrentSchedule { get; set; }
         public List<ScheduleDayDto> ScheduleDays { get; set; }
         public string PrimaryManagerName { get; set; }
-        public string SeatNumber { get; set; }
-        public string FloorNumber { get; set; }
+        public string? SeatNumber { get; set; }
+        public string? FloorNumber { get; set; }
     }
 }

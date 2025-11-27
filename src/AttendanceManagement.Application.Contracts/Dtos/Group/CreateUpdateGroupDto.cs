@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace AttendanceManagement.Dtos.Group
 {
-    internal class CreateUpdateGroupDto
+    public class CreateUpdateGroupDto
     {
+        public string Name { get; set; }
+        public string Description { get; set; }
     }
 }
