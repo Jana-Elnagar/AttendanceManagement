@@ -1,0 +1,325 @@
+﻿/* Fix 1: Icon circle size in wizard - More specific selector */
+.text-center > .d-inline-flex.align-items-center.justify-content-center {
+    width: 85px !important;
+    height: 80px !important;
+    min-width: 80px !important;
+    min-height: 80px !important;
+    display: inline-flex !important;
+}
+
+.text-center > .d-inline-flex i.fa-chart-bar,
+.text-center > .d-inline-flex i.fas.fa-chart-bar {
+    font-size: 2.5rem !important;
+    line-height: 1 !important;
+}
+
+/* Fix 2: Ensure sidebar is properly positioned */
+.app-sidebar {
+    position: fixed !important;
+    height: 100vh !important;
+    width: 260px !important;
+    overflow-y: auto !important;
+    z-index: 1000 !important;
+    left: 0 !important;
+    top: 0 !important;
+}
+
+/* Fix 3: Main content accounting for fixed sidebar */
+.app-main {
+    margin-left: 260px !important;
+    width: calc(100% - 260px) !important;
+}
+
+/* Fix 4: Login page specific fixes */
+body.abp-application-layout {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Fix 5: Ensure login forms are properly centered */
+.abp-login-page,
+.account-layout {
+    min-height: 100vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+}
+
+    /* Fix 6: Login card styling */
+    .account-layout .card,
+    .abp-login-page .card {
+        max-width: 450px !important;
+        width: 100% !important;
+        margin: auto !important;
+    }
+
+/* Fix 7: Prevent layout shift */
+.app-layout {
+    position: relative;
+    min-height: 100vh;
+}
+
+/* Fix 8: Wizard progress steps */
+.d-flex.align-items-center.justify-content-center > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Fix 9: Ensure responsive behavior */
+@media (max-width: 768px) {
+    .app-sidebar {
+        width: 0 !important;
+        overflow: hidden;
+    }
+
+    .app-main {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+}
+
+/* Fix 10: Custom Ejada blue theme colors */
+:root {
+    --ejada-primary: #000f7d;
+    --ejada-primary-dark: #1e3a8a;
+    --ejada-primary-light: #dbeafe;
+    --ejada-success: #16a34a;
+    --ejada-warning: #f97316;
+}
+
+.btn-primary {
+    background-color: var(--ejada-primary) !important;
+    border-color: var(--ejada-primary) !important;
+}
+
+    .btn-primary:hover {
+        background-color: var(--ejada-primary-dark) !important;
+        border-color: var(--ejada-primary-dark) !important;
+    }
+
+.text-primary {
+    color: var(--ejada-primary) !important;
+}
+
+.bg-primary {
+    background-color: var(--ejada-primary) !important;
+}
+
+/* Fix 11: Card hover effects */
+.hover-shadow {
+    transition: all 0.3s ease;
+}
+
+    .hover-shadow:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+    }
+
+/* Fix 12: Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+.app-main main {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Fix 13: Loading spinner */
+.spinner-border {
+    color: var(--ejada-primary) !important;
+}
+
+/* Fix 14: lpx sidebar color */
+/* Sidebar background */
+.lpx-sidebar,
+.lpx-nav-menu,
+.lpx-menu-container {
+    background-color: #F8F8FF !important; /* Ghost White background */
+    border-right: 1px solid #e5e7eb !important;
+}
+
+/* Logo container */
+.lpx-logo-container {
+    background-color: #F8F8FF !important; /* Ghost White */
+    border-bottom: 1px solid #e5e7eb !important;
+    padding: 1rem !important;
+}
+
+/* Menu items default state */
+.lpx-menu-item,
+.lpx-menu-item-link {
+    background-color: transparent !important;
+    color: #64748b !important; /* Gray text */
+    transition: all 0.2s ease !important;
+}
+
+    /* Menu item icons */
+    .lpx-menu-item-icon,
+    .lpx-menu-item i {
+        color: #64748b !important;
+        transition: color 0.2s ease !important;
+    }
+
+    /* Menu item hover state */
+    .lpx-menu-item:hover,
+    .lpx-menu-item-link:hover {
+        background-color: #f1f5f9 !important; /* Light gray hover */
+        color: var(--ejada-primary) !important; /* Blue text on hover */
+    }
+
+        .lpx-menu-item:hover .lpx-menu-item-icon,
+        .lpx-menu-item:hover i,
+        .lpx-menu-item-link:hover .lpx-menu-item-icon,
+        .lpx-menu-item-link:hover i {
+            color: var(--ejada-primary) !important;
+        }
+
+    /* Menu item active/selected state */
+    .lpx-menu-item.active,
+    .lpx-menu-item.selected,
+    .lpx-menu-item-link.active,
+    .lpx-menu-item-link.selected {
+        background-color: var(--ejada-primary) !important; /* Blue background */
+        color: #ffffff !important; /* White text */
+    }
+
+        .lpx-menu-item.active .lpx-menu-item-icon,
+        .lpx-menu-item.active i,
+        .lpx-menu-item.selected .lpx-menu-item-icon,
+        .lpx-menu-item.selected i,
+        .lpx-menu-item-link.active .lpx-menu-item-icon,
+        .lpx-menu-item-link.active i {
+            color: #ffffff !important;
+        }
+
+/* Menu group headers */
+.lpx-menu-group-title,
+.lpx-menu-section-title {
+    color: #9ca3af !important; /* Lighter gray for headers */
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 0.5rem 1rem !important;
+}
+
+/* Submenu items */
+.lpx-submenu-item,
+.lpx-submenu-item-link {
+    background-color: transparent !important;
+    color: #64748b !important;
+    padding-left: 2.5rem !important;
+}
+
+    .lpx-submenu-item:hover,
+    .lpx-submenu-item-link:hover {
+        background-color: #f1f5f9 !important;
+        color: #2563eb !important;
+    }
+
+    .lpx-submenu-item.active,
+    .lpx-submenu-item-link.active {
+        background-color: #dbeafe !important; /* Light blue for submenu */
+        color: #1e3a8a !important; /* Dark blue text */
+    }
+
+/* Menu dividers */
+.lpx-menu-divider {
+    border-color: #e5e7eb !important;
+    margin: 0.5rem 1rem !important;
+}
+
+/* Scrollbar styling for sidebar */
+.lpx-sidebar::-webkit-scrollbar,
+.lpx-nav-menu::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lpx-sidebar::-webkit-scrollbar-track,
+.lpx-nav-menu::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.lpx-sidebar::-webkit-scrollbar-thumb,
+.lpx-nav-menu::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+    .lpx-sidebar::-webkit-scrollbar-thumb:hover,
+    .lpx-nav-menu::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+/* Fix for menu item text alignment */
+.lpx-menu-item-text,
+.lpx-menu-item-link-text {
+    color: inherit !important;
+}
+
+/* Remove any default shadows */
+.lpx-sidebar,
+.lpx-menu-container {
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Ensure proper spacing */
+.lpx-menu-item,
+.lpx-menu-item-link {
+    margin-bottom: 2px !important;
+}
+
+    /* Badge colors (if any) */
+    .lpx-menu-item .badge {
+        background-color: #2563eb !important;
+        color: white !important;
+    }
+
+
+/*Changing default bg color*/
+.lpx-content-container,
+.lpx-breadcrumb-container,
+.lpx-topbar-container,
+.lpx-topbar{
+    background-color: #F8F8FF !important
+}
+
+
+/*topbar item*/
+.lpx-breadcrumb-item:hover,
+.lpx-breadcrumb-item-link:hover {
+    background-color: #f1f5f9 !important; /* Light gray hover */
+    color: var(--ejada-primary) !important; /* Blue text on hover */
+}
+
+    .lpx-breadcrumb-item:hover .lpx-menu-item-icon,
+    .lpx-breadcrumb-item:hover i,
+    .lpx-breadcrumb-item-link:hover .lpx-menu-item-icon,
+    .lpx-breadcrumb-item-link:hover i {
+        color: var(--ejada-primary) !important;
+    }
+
+/* Menu item active/selected state */
+.lpx-breadcrumb-item.active,
+.lpx-breadcrumb-item.selected,
+.lpx-breadcrumb-item-link.active,
+.lpx-breadcrumb-item-link.selected {
+    background-color: var(--ejada-primary) !important; /* Blue background */
+    color: #ffffff !important; /* White text */
+}
+
+    .lpx-breadcrumb-item.active .lpx-menu-item-icon,
+    .lpx-breadcrumb-item.active i,
+    .lpx-breadcrumb-item.selected .lpx-menu-item-icon,
+    .lpx-breadcrumb-item.selected i,
+    .lpx-breadcrumb-item-link.active .lpx-menu-item-icon,
+    .lpx-breadcrumb-item-link.active i {
+        color: #ffffff !important;
+    }
+
+.lpx-language-selection .dropdown-toggle .lpx-icon {
+    color: color: var(--ejada-primary) !important; 
+}
