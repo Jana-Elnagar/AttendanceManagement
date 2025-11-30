@@ -1,0 +1,576 @@
+﻿@page "/my-exception-requests"
+@using AttendanceManagement.Dtos.ExceptionRequests
+@using AttendanceManagement.Interfaces
+@using AttendanceManagement.Permissions
+@using AttendanceManagement.Enums
+@using Volo.Abp.AspNetCore.Components.Messages
+@using Volo.Abp.Content
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(AttendanceManagementPermissions.ExceptionRequests.ViewOwn)]
+@inject IExceptionRequestAppService ExceptionRequestAppService
+@inject IUiMessageService MessageService
+@inject IAuthorizationService AuthorizationService
+@inject IStringLocalizer<AttendanceManagementResource> L
+@inherits AbpComponentBase
+
+<Card>
+    <CardHeader>
+        <Row Class="justify-content-between">
+            <Column ColumnSize="ColumnSize.IsAuto">
+                <h2>@L["MyExceptionRequests"]</h2>
+            </Column>
+            <Column ColumnSize="ColumnSize.IsAuto">
+                @if (HasCreatePermission)
+                {
+                    <Button Color="Color.Primary" Clicked="OpenCreateModalAsync">
+                        <Icon Name="IconName.Add" /> @L["NewRequest"]
+                    </Button>
+                }
+            </Column>
+        </Row>
+    </CardHeader>
+    <CardBody>
+        @if (IsLoading)
+        {
+            <div class="text-center p-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (MyRequestsList != null && MyRequestsList.Any())
+        {
+            <Table Striped="true" Hoverable="true" Responsive="true">
+                <TableHeader>
+                    <TableRow>
+                        <TableHeaderCell>@L["Date"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Type"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Reason"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Status"]</TableHeaderCell>
+                        <TableHeaderCell>@L["SubmittedOn"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Actions"]</TableHeaderCell>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    @foreach (var request in MyRequestsList)
+                    {
+                        <TableRow>
+                            <TableRowCell>@request.ExceptionDate.ToString("yyyy-MM-dd")</TableRowCell>
+                            <TableRowCell>
+                                @if (request.Type == ExceptionRequestType.Sick)
+                                {
+                                    <Badge Color="Color.Danger">@L["Sick"]</Badge>
+                                }
+                                else
+                                {
+                                    <Badge Color="Color.Warning">@L["SpecialCondition"]</Badge>
+                                }
+                            </TableRowCell>
+                            <TableRowCell>
+                                @if (!string.IsNullOrEmpty(request.Reason))
+                                {
+                                    @(request.Reason.Length > 50 ? request.Reason.Substring(0, 50) + "..." : request.Reason)
+                                }
+                            </TableRowCell>
+                            <TableRowCell>
+                                @switch (request.Status)
+                                {
+                                    case ExceptionRequestStatus.Pending:
+                                        <Badge Color="Color.Warning">@L["Pending"]</Badge>
+                                        break;
+                                    case ExceptionRequestStatus.Approved:
+                                        <Badge Color="Color.Success">@L["Approved"]</Badge>
+                                        break;
+                                    case ExceptionRequestStatus.Rejected:
+                                        <Badge Color="Color.Danger">@L["Rejected"]</Badge>
+                                        break;
+                                    case ExceptionRequestStatus.Cancelled:
+                                        <Badge Color="Color.Secondary">@L["Cancelled"]</Badge>
+                                        break;
+                                }
+                            </TableRowCell>
+                            <TableRowCell>@request.CreationTime.ToString("yyyy-MM-dd HH:mm")</TableRowCell>
+                            <TableRowCell>
+                                <Button Color="Color.Info" Size="Size.Small" Clicked="@(() => ViewRequestDetailsAsync(request.Id))">
+                                    <Icon Name="IconName.Eye" /> @L["Details"]
+                                </Button>
+                                @if (request.Status == ExceptionRequestStatus.Pending && HasDeletePermission)
+                                {
+                                    <Button Color="Color.Danger" Size="Size.Small" Clicked="@(() => CancelRequestAsync(request.Id))" Margin="Margin.Is1.FromStart">
+                                        <Icon Name="IconName.Delete" /> @L["Cancel"]
+                                    </Button>
+                                }
+                            </TableRowCell>
+                        </TableRow>
+                    }
+                </TableBody>
+            </Table>
+        }
+        else
+        {
+            <Alert Color="Color.Info" Visible="true">
+                <AlertDescription>@L["NoRecordsFound"]</AlertDescription>
+            </Alert>
+        }
+    </CardBody>
+</Card>
+
+@* Create Request Modal *@
+<Modal @ref="CreateModal">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <Form>
+            <ModalHeader>
+                <ModalTitle>@L["NewExceptionRequest"]</ModalTitle>
+                <CloseButton Clicked="CloseCreateModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                @if (NewRequest != null)
+                {
+                    <Validations @ref="RequestValidations" Model="@NewRequest" ValidateOnLoad="false">
+                        <Validation>
+                            <Field>
+                                <FieldLabel>@L["ExceptionDate"] *</FieldLabel>
+                                <DateEdit TValue="DateTime" @bind-Date="@NewRequest.ExceptionDate" Min="DateTime.Today">
+                                    <Feedback><ValidationError /></Feedback>
+                                </DateEdit>
+                                <FieldHelp>@L["OnlyScheduledOnsiteDays"]</FieldHelp>
+                            </Field>
+                        </Validation>
+
+                        <Validation>
+                            <Field>
+                                <FieldLabel>@L["Type"] *</FieldLabel>
+                                <Select TValue="ExceptionRequestType" @bind-SelectedValue="@NewRequest.Type">
+                                    <SelectItem Value="ExceptionRequestType.Sick">@L["Sick"]</SelectItem>
+                                    <SelectItem Value="ExceptionRequestType.SpecialCondition">@L["SpecialCondition"]</SelectItem>
+                                </Select>
+                            </Field>
+                        </Validation>
+
+                        <Validation>
+                            <Field>
+                                <FieldLabel>@L["Reason"] *</FieldLabel>
+                                <MemoEdit @bind-Text="@NewRequest.Reason" Rows="5">
+                                    <Feedback><ValidationError /></Feedback>
+                                </MemoEdit>
+                            </Field>
+                        </Validation>
+
+                        @if (NewRequest.Type == ExceptionRequestType.Sick)
+                        {
+                            <Alert Color="Color.Info" Visible="true">
+                                <AlertDescription>
+                                    @L["SickRequestRequiresMedicalDocument"]
+                                </AlertDescription>
+                            </Alert>
+
+                            <Field>
+                                <FieldLabel>@L["MedicalDocument"]</FieldLabel>
+                                <FileEdit Changed="OnFileChanged" Filter=".pdf,.jpg,.jpeg,.png" />
+                                <FieldHelp>@L["AllowedFileTypes"]: PDF, JPG, PNG (Max 5MB)</FieldHelp>
+                            </Field>
+                        }
+                    </Validations>
+                }
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseCreateModalAsync">@L["Cancel"]</Button>
+                <Button Color="Color.Primary" Clicked="SubmitRequestAsync" Loading="@IsSaving">
+                    @L["Submit"]
+                </Button>
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+
+@* View Details Modal *@
+<Modal @ref="DetailsModal">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <ModalHeader>
+            <ModalTitle>@L["RequestDetails"]</ModalTitle>
+            <CloseButton Clicked="CloseDetailsModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            @if (SelectedRequest != null)
+            {
+                <Row>
+                    <Column>
+                        <Field Horizontal="true">
+                            <FieldLabel ColumnSize="ColumnSize.Is3">@L["ExceptionDate"]</FieldLabel>
+                            <FieldBody ColumnSize="ColumnSize.Is9">@SelectedRequest.ExceptionDate.ToString("yyyy-MM-dd (dddd)")</FieldBody>
+                        </Field>
+                    </Column>
+                    <Column>
+                        <Field Horizontal="true">
+                            <FieldLabel ColumnSize="ColumnSize.Is3">@L["Type"]</FieldLabel>
+                            <FieldBody ColumnSize="ColumnSize.Is9">
+                                @if (SelectedRequest.Type == ExceptionRequestType.Sick)
+                                {
+                                    <Badge Color="Color.Danger">@L["Sick"]</Badge>
+                                }
+                                else
+                                {
+                                    <Badge Color="Color.Warning">@L["SpecialCondition"]</Badge>
+                                }
+                            </FieldBody>
+                        </Field>
+                    </Column>
+                    <Column>
+                        <Field Horizontal="true">
+                            <FieldLabel ColumnSize="ColumnSize.Is3">@L["Status"]</FieldLabel>
+                            <FieldBody ColumnSize="ColumnSize.Is9">
+                                @switch (SelectedRequest.Status)
+                                {
+                                    case ExceptionRequestStatus.Pending:
+                                        <Badge Color="Color.Warning">@L["Pending"]</Badge>
+                                        break;
+                                    case ExceptionRequestStatus.Approved:
+                                        <Badge Color="Color.Success">@L["Approved"]</Badge>
+                                        break;
+                                    case ExceptionRequestStatus.Rejected:
+                                        <Badge Color="Color.Danger">@L["Rejected"]</Badge>
+                                        break;
+                                    case ExceptionRequestStatus.Cancelled:
+                                        <Badge Color="Color.Secondary">@L["Cancelled"]</Badge>
+                                        break;
+                                }
+                            </FieldBody>
+                        </Field>
+                    </Column>
+                </Row>
+
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Reason"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">@SelectedRequest.Reason</FieldBody>
+                </Field>
+
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["SubmittedOn"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">@SelectedRequest.CreationTime.ToString("yyyy-MM-dd HH:mm")</FieldBody>
+                </Field>
+
+                @if (SelectedRequest.Attachments != null && SelectedRequest.Attachments.Any())
+                {
+                    <Divider />
+                    <h5>@L["Attachments"]</h5>
+                    <ListGroup>
+                        @foreach (var attachment in SelectedRequest.Attachments)
+                        {
+                            <ListGroupItem>
+                                <Icon Name="IconName.FileAlt" />
+                                @attachment.FileName
+                                <Button Color="Color.Link" Size="Size.Small" Float="Float.End" Clicked="@(() => DownloadAttachmentAsync(attachment.Id))">
+                                    <Icon Name="IconName.Download" />
+                                </Button>
+                            </ListGroupItem>
+                        }
+                    </ListGroup>
+                }
+
+                @if (SelectedRequest.ApprovalHistories != null && SelectedRequest.ApprovalHistories.Any())
+                {
+                    <Divider />
+                    <h5>@L["ApprovalHistory"]</h5>
+                    <Table Striped="true">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>@L["Step"]</TableHeaderCell>
+                                <TableHeaderCell>@L["Approver"]</TableHeaderCell>
+                                <TableHeaderCell>@L["Action"]</TableHeaderCell>
+                                <TableHeaderCell>@L["Notes"]</TableHeaderCell>
+                                <TableHeaderCell>@L["Date"]</TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var history in SelectedRequest.ApprovalHistories.OrderBy(h => h.StepOrder))
+                            {
+                                <TableRow>
+                                    <TableRowCell>@history.StepOrder</TableRowCell>
+                                    <TableRowCell>@(history.ApproverEmployeeName ?? "-")</TableRowCell>
+                                    <TableRowCell>
+                                        @switch (history.Action)
+                                        {
+                                            case ApprovalAction.Approved:
+                                                <Badge Color="Color.Success">@L["Approved"]</Badge>
+                                                break;
+                                            case ApprovalAction.Rejected:
+                                                <Badge Color="Color.Danger">@L["Rejected"]</Badge>
+                                                break;
+                                            case ApprovalAction.Pending:
+                                                <Badge Color="Color.Warning">@L["Pending"]</Badge>
+                                                break;
+                                        }
+                                    </TableRowCell>
+                                    <TableRowCell>@(history.Notes ?? "-")</TableRowCell>
+                                    <TableRowCell>@history.ActionDateTime.ToString("yyyy-MM-dd HH:mm")</TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                }
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseDetailsModalAsync">@L["Close"]</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@code {
+    private List<ExceptionRequestDto> MyRequestsList { get; set; } = new();
+    private Modal CreateModal { get; set; }
+    private Modal DetailsModal { get; set; }
+    private Validations RequestValidations { get; set; }
+
+    private CreateExceptionRequestDto NewRequest { get; set; }
+    private ExceptionRequestDto SelectedRequest { get; set; }
+    private IFileEntry SelectedFile { get; set; }
+    private bool IsLoading { get; set; } = true;
+    private bool IsSaving { get; set; }
+
+    private bool HasCreatePermission { get; set; }
+    private bool HasDeletePermission { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            HasCreatePermission = await AuthorizationService.IsGrantedAsync(
+                AttendanceManagementPermissions.ExceptionRequests.Create);
+            HasDeletePermission = await AuthorizationService.IsGrantedAsync(
+                AttendanceManagementPermissions.ExceptionRequests.Delete);
+        }
+        catch
+        {
+            HasCreatePermission = false;
+            HasDeletePermission = false;
+        }
+
+        try
+        {
+            await LoadMyRequestsAsync();
+        }
+        catch
+        {
+            MyRequestsList = new List<ExceptionRequestDto>();
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMyRequestsAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            StateHasChanged();
+            
+            var result = await ExceptionRequestAppService.GetMyRequestsAsync();
+            MyRequestsList = result ?? new List<ExceptionRequestDto>();
+        }
+        catch (Exception ex)
+        {
+            MyRequestsList = new List<ExceptionRequestDto>();
+            try
+            {
+                await MessageService.Error($"Error loading requests: {ex.Message}");
+            }
+            catch
+            {
+                // Ignore message service errors to prevent cascading
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenCreateModalAsync()
+    {
+        try
+        {
+            NewRequest = new CreateExceptionRequestDto
+            {
+                ExceptionDate = DateTime.Today,
+                Type = ExceptionRequestType.SpecialCondition
+            };
+            SelectedFile = null;
+            if (CreateModal != null)
+            {
+                await CreateModal.Show();
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error opening modal: {ex.Message}");
+            }
+            catch
+            {
+                // Ignore message service errors
+            }
+        }
+    }
+
+    private async Task CloseCreateModalAsync()
+    {
+        try
+        {
+            if (CreateModal != null)
+            {
+                await CreateModal.Hide();
+            }
+            StateHasChanged();
+        }
+        catch
+        {
+            // Ignore errors
+        }
+    }
+
+    private void OnFileChanged(FileChangedEventArgs e)
+    {
+        SelectedFile = e.Files?.FirstOrDefault();
+    }
+
+    private async Task SubmitRequestAsync()
+    {
+        try
+        {
+            if (NewRequest == null)
+            {
+                try
+                {
+                    await MessageService.Error("Request data is missing.");
+                }
+                catch { }
+                return;
+            }
+
+            if (RequestValidations != null && !await RequestValidations.ValidateAll())
+            {
+                return;
+            }
+
+            IsSaving = true;
+            StateHasChanged();
+
+            var result = await ExceptionRequestAppService.CreateAsync(NewRequest);
+
+            // Upload attachment if selected
+            if (SelectedFile != null && result != null)
+            {
+                try
+                {
+                    using var stream = SelectedFile.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024); // 5MB
+                    var remoteStream = new RemoteStreamContent(stream, SelectedFile.Name ?? "file", SelectedFile.Type ?? "application/octet-stream");
+                    await ExceptionRequestAppService.UploadAttachmentAsync(
+                        result.Id,
+                        remoteStream,
+                        NewRequest.Type == ExceptionRequestType.Sick ? AttachmentType.MedicalDocument : AttachmentType.SupportingDocument
+                    );
+                }
+                catch
+                {
+                    // Ignore attachment upload errors
+                }
+            }
+
+            await LoadMyRequestsAsync();
+            await CloseCreateModalAsync();
+            try
+            {
+                await MessageService.Success(L["RequestSubmittedSuccessfully"]);
+            }
+            catch { }
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error(ex.Message);
+            }
+            catch { }
+        }
+        finally
+        {
+            IsSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ViewRequestDetailsAsync(Guid id)
+    {
+        try
+        {
+            SelectedRequest = await ExceptionRequestAppService.GetAsync(id);
+            if (DetailsModal != null)
+            {
+                await DetailsModal.Show();
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error loading details: {ex.Message}");
+            }
+            catch { }
+        }
+    }
+
+    private async Task CloseDetailsModalAsync()
+    {
+        try
+        {
+            if (DetailsModal != null)
+            {
+                await DetailsModal.Hide();
+            }
+            StateHasChanged();
+        }
+        catch { }
+    }
+
+    private async Task CancelRequestAsync(Guid id)
+    {
+        try
+        {
+            if (await MessageService.Confirm(L["CancelRequestConfirmation"]))
+            {
+                await ExceptionRequestAppService.CancelAsync(id);
+                await LoadMyRequestsAsync();
+                try
+                {
+                    await MessageService.Success(L["RequestCancelledSuccessfully"]);
+                }
+                catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error cancelling request: {ex.Message}");
+            }
+            catch { }
+        }
+    }
+
+    private async Task DownloadAttachmentAsync(Guid attachmentId)
+    {
+        try
+        {
+            await MessageService.Info("Download functionality to be implemented");
+        }
+        catch { }
+    }
+}

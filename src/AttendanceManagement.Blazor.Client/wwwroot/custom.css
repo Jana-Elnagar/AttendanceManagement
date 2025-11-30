@@ -302,7 +302,7 @@ html {
         color: var(--ejada-primary) !important;
     }
 
-/* Menu item active/selected state */
+/* topbar item active/selected state */
 .lpx-breadcrumb-item.active,
 .lpx-breadcrumb-item.selected,
 .lpx-breadcrumb-item-link.active,

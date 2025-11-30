@@ -1,13 +1,14 @@
+using AttendanceManagement.Blazor.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using AttendanceManagement.Blazor.Client;
 using Volo.Abp;
 using Volo.Abp.AspNetCore.Components.WebAssembly.LeptonXLiteTheme.Bundling;
 using Volo.Abp.AspNetCore.Components.WebAssembly.WebApp;
 using Volo.Abp.AspNetCore.Mvc.UI.Bundling;
 using Volo.Abp.Autofac;
+using Volo.Abp.AutoMapper;
 using Volo.Abp.Modularity;
 
 namespace AttendanceManagement.Blazor;
@@ -25,6 +26,11 @@ public class AttendanceManagementBlazorModule : AbpModule
         Configure<RouteOptions>(options =>
         {
             options.SuppressCheckForUnhandledSecurityMetadata = true;
+        });
+
+        Configure<AbpAutoMapperOptions>(options =>
+        {
+            options.AddMaps<AttendanceManagementBlazorModule>();
         });
 
         // Add services to the container.

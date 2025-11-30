@@ -1,0 +1,503 @@
+@page "/groups"
+@using AttendanceManagement.Interfaces
+@using AttendanceManagement.Permissions
+@using AttendanceManagement.Dtos.Group
+@using AttendanceManagement.Dtos.Employees
+@using Volo.Abp.Application.Dtos
+@using Volo.Abp.AspNetCore.Components.Messages
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(AttendanceManagementPermissions.Groups.Default)]
+@inject IGroupAppService GroupAppService
+@inject IEmployeeAppService EmployeeAppService
+@inject IUiMessageService MessageService
+@inject IAuthorizationService AuthorizationService
+@inject IStringLocalizer<AttendanceManagementResource> L
+@inherits AbpComponentBase
+
+<Card>
+    <CardHeader>
+        <Row Class="justify-content-between">
+            <Column ColumnSize="ColumnSize.IsAuto">
+                <h2>@L["Groups"]</h2>
+            </Column>
+            <Column ColumnSize="ColumnSize.IsAuto">
+                @if (HasCreatePermission)
+                {
+                    <Button Color="Color.Primary" Clicked="OpenCreateModalAsync">
+                        <Icon Name="IconName.Add" /> @L["NewGroup"]
+                    </Button>
+                }
+            </Column>
+        </Row>
+    </CardHeader>
+    <CardBody>
+        @if (IsLoading)
+        {
+            <div class="text-center p-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (GroupList != null && GroupList.Any())
+        {
+            <Table Striped="true" Hoverable="true" Responsive="true">
+                <TableHeader>
+                    <TableRow>
+                        <TableHeaderCell>@L["Name"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Description"]</TableHeaderCell>
+                        <TableHeaderCell>@L["EmployeeCount"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Status"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Actions"]</TableHeaderCell>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    @foreach (var group in GroupList)
+                    {
+                        <TableRow>
+                            <TableRowCell>
+                                <a href="javascript:void(0)" @onclick="@(() => OpenDetailsModalAsync(group.Id))">
+                                    @group.Name
+                                </a>
+                            </TableRowCell>
+                            <TableRowCell>@(group.Description ?? "-")</TableRowCell>
+                            <TableRowCell>@group.EmployeeCount</TableRowCell>
+                            <TableRowCell>
+                                @if (group.IsActive)
+                                {
+                                    <Badge Color="Color.Success">@L["Active"]</Badge>
+                                }
+                                else
+                                {
+                                    <Badge Color="Color.Secondary">@L["Inactive"]</Badge>
+                                }
+                            </TableRowCell>
+                            <TableRowCell>
+                                <Dropdown>
+                                    <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                        @L["Actions"]
+                                    </DropdownToggle>
+                                    <DropdownMenu>
+                                        <DropdownItem Clicked="@(() => OpenDetailsModalAsync(group.Id))">
+                                            <Icon Name="IconName.Eye" /> @L["Details"]
+                                        </DropdownItem>
+                                        @if (HasUpdatePermission)
+                                        {
+                                            <DropdownItem Clicked="@(() => OpenEditModalAsync(group.Id))">
+                                                <Icon Name="IconName.Edit" /> @L["Edit"]
+                                            </DropdownItem>
+                                            @if (group.IsActive)
+                                            {
+                                                <DropdownItem Clicked="@(() => DeactivateGroupAsync(group.Id))">
+                                                    <Icon Name="IconName.Ban" /> @L["Deactivate"]
+                                                </DropdownItem>
+                                            }
+                                            else
+                                            {
+                                                <DropdownItem Clicked="@(() => ActivateGroupAsync(group.Id))">
+                                                    <Icon Name="IconName.Check" /> @L["Activate"]
+                                                </DropdownItem>
+                                            }
+                                        }
+                                    </DropdownMenu>
+                                </Dropdown>
+                            </TableRowCell>
+                        </TableRow>
+                    }
+                </TableBody>
+            </Table>
+        }
+        else
+        {
+            <Alert Color="Color.Info" Visible="true">
+                <AlertDescription>@L["NoRecordsFound"]</AlertDescription>
+            </Alert>
+        }
+    </CardBody>
+</Card>
+
+<Modal @ref="GroupModal">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <Form>
+            <ModalHeader>
+                <ModalTitle>@ModalTitle</ModalTitle>
+                <CloseButton Clicked="CloseGroupModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                @if (EditingGroup != null)
+                {
+                    <Field>
+                        <FieldLabel>@L["Name"] *</FieldLabel>
+                        <TextEdit @bind-Text="@EditingGroup.Name" Placeholder="Enter group name" />
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["Description"] *</FieldLabel>
+                        <MemoEdit @bind-Text="@EditingGroup.Description" Rows="3" Placeholder="Enter description" />
+                    </Field>
+                }
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseGroupModalAsync">@L["Cancel"]</Button>
+                <Button Color="Color.Primary" Clicked="SaveGroupAsync" Loading="@IsSaving">
+                    @L["Save"]
+                </Button>
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+
+<Modal @ref="DetailsModal">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <ModalHeader>
+            <ModalTitle>@L["GroupDetails"]</ModalTitle>
+            <CloseButton Clicked="CloseDetailsModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            @if (SelectedGroupDetails != null)
+            {
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Name"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        <Text>@SelectedGroupDetails.Name</Text>
+                    </FieldBody>
+                </Field>
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Description"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        <Text>@(SelectedGroupDetails.Description ?? "-")</Text>
+                    </FieldBody>
+                </Field>
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Status"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        @if (SelectedGroupDetails.IsActive)
+                        {
+                            <Badge Color="Color.Success">@L["Active"]</Badge>
+                        }
+                        else
+                        {
+                            <Badge Color="Color.Secondary">@L["Inactive"]</Badge>
+                        }
+                    </FieldBody>
+                </Field>
+
+                @if (SelectedGroupDetails.Employees != null && SelectedGroupDetails.Employees.Any())
+                {
+                    <Divider />
+                    <h5>@L["Employees"] (@SelectedGroupDetails.Employees.Count)</h5>
+                    <Table Striped="true">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>@L["Name"]</TableHeaderCell>
+                                <TableHeaderCell>@L["Department"]</TableHeaderCell>
+                                <TableHeaderCell>@L["Sector"]</TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var employee in SelectedGroupDetails.Employees)
+                            {
+                                <TableRow>
+                                    <TableRowCell>@employee.Name</TableRowCell>
+                                    <TableRowCell>@employee.Department</TableRowCell>
+                                    <TableRowCell>@employee.Sector</TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                }
+                else
+                {
+                    <Divider />
+                    <Alert Color="Color.Info" Visible="true">
+                        <AlertDescription>@L["NoEmployeesInGroup"]</AlertDescription>
+                    </Alert>
+                }
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseDetailsModalAsync">@L["Close"]</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@code {
+    private List<GroupDto> GroupList { get; set; }
+    private bool IsLoading { get; set; } = true;
+    private bool IsSaving { get; set; }
+
+    private Modal GroupModal { get; set; }
+    private Modal DetailsModal { get; set; }
+
+    private CreateUpdateGroupDto EditingGroup { get; set; }
+    private Guid? EditingGroupId { get; set; }
+    private GroupWithEmployeesDto SelectedGroupDetails { get; set; }
+    private string ModalTitle { get; set; }
+
+    private bool HasCreatePermission { get; set; }
+    private bool HasUpdatePermission { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await SetPermissionsAsync();
+            await LoadGroupsAsync();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error initializing: {ex.Message}");
+            }
+            catch { }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task SetPermissionsAsync()
+    {
+        try
+        {
+            HasCreatePermission = await AuthorizationService.IsGrantedAsync(AttendanceManagementPermissions.Groups.Create);
+            HasUpdatePermission = await AuthorizationService.IsGrantedAsync(AttendanceManagementPermissions.Groups.Edit);
+        }
+        catch
+        {
+            HasCreatePermission = false;
+            HasUpdatePermission = false;
+        }
+    }
+
+    private async Task LoadGroupsAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            StateHasChanged();
+
+            var input = new PagedAndSortedResultRequestDto
+            {
+                SkipCount = 0,
+                MaxResultCount = 1000
+            };
+
+            var result = await GroupAppService.GetListAsync(input);
+            GroupList = result.Items.ToList();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error loading groups: {ex.Message}");
+            }
+            catch { }
+            GroupList = new List<GroupDto>();
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenCreateModalAsync()
+    {
+        try
+        {
+            EditingGroupId = null;
+            EditingGroup = new CreateUpdateGroupDto();
+            ModalTitle = L["NewGroup"];
+            if (GroupModal != null)
+            {
+                await GroupModal.Show();
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error opening create modal: {ex.Message}");
+            }
+            catch { }
+        }
+    }
+
+    private async Task OpenEditModalAsync(Guid id)
+    {
+        try
+        {
+            EditingGroupId = id;
+            var group = await GroupAppService.GetAsync(id);
+            EditingGroup = new CreateUpdateGroupDto
+            {
+                Name = group.Name,
+                Description = group.Description
+            };
+            ModalTitle = L["EditGroup"];
+            if (GroupModal != null)
+            {
+                await GroupModal.Show();
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error loading group: {ex.Message}");
+            }
+            catch { }
+        }
+    }
+
+    private async Task OpenDetailsModalAsync(Guid id)
+    {
+        try
+        {
+            SelectedGroupDetails = await GroupAppService.GetWithEmployeesAsync(id);
+            if (DetailsModal != null)
+            {
+                await DetailsModal.Show();
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error loading details: {ex.Message}");
+            }
+            catch { }
+        }
+    }
+
+    private async Task CloseGroupModalAsync()
+    {
+        try
+        {
+            if (GroupModal != null)
+            {
+                await GroupModal.Hide();
+            }
+            StateHasChanged();
+        }
+        catch { }
+    }
+
+    private async Task CloseDetailsModalAsync()
+    {
+        try
+        {
+            if (DetailsModal != null)
+            {
+                await DetailsModal.Hide();
+            }
+            StateHasChanged();
+        }
+        catch { }
+    }
+
+    private async Task SaveGroupAsync()
+    {
+        try
+        {
+            if (EditingGroup == null)
+            {
+                try
+                {
+                    await MessageService.Error("Group data is missing.");
+                }
+                catch { }
+                return;
+            }
+
+            IsSaving = true;
+            StateHasChanged();
+
+            if (EditingGroupId == null)
+            {
+                await GroupAppService.CreateAsync(EditingGroup);
+            }
+            else
+            {
+                await GroupAppService.UpdateAsync(EditingGroupId.Value, EditingGroup);
+            }
+
+            await CloseGroupModalAsync();
+            await LoadGroupsAsync();
+            try
+            {
+                await MessageService.Success(L["SuccessfullySaved"]);
+            }
+            catch { }
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error saving: {ex.Message}");
+            }
+            catch { }
+        }
+        finally
+        {
+            IsSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ActivateGroupAsync(Guid id)
+    {
+        try
+        {
+            if (await MessageService.Confirm(L["ActivateConfirmation"]))
+            {
+                await GroupAppService.ActivateAsync(id);
+                await LoadGroupsAsync();
+                try
+                {
+                    await MessageService.Success(L["SuccessfullyActivated"]);
+                }
+                catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error: {ex.Message}");
+            }
+            catch { }
+        }
+    }
+
+    private async Task DeactivateGroupAsync(Guid id)
+    {
+        try
+        {
+            if (await MessageService.Confirm(L["DeactivateConfirmation"]))
+            {
+                await GroupAppService.DeactivateAsync(id);
+                await LoadGroupsAsync();
+                try
+                {
+                    await MessageService.Success(L["SuccessfullyDeactivated"]);
+                }
+                catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error: {ex.Message}");
+            }
+            catch { }
+        }
+    }
+}
+

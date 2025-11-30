@@ -26,13 +26,13 @@ namespace AttendanceManagement.Data.ExceptionRequests
         public virtual Workflow Workflow { get; set; }
         public virtual ICollection<ExceptionRequestApprovalHistory> ApprovalHistories { get; set; }
         public virtual ICollection<ExceptionRequestAttachment> Attachments { get; set; }
-        public virtual ICollection<Notification> Notifications { get; set; }
+        //public virtual ICollection<Notification> Notifications { get; set; }
 
         protected ExceptionRequest()
         {
             ApprovalHistories = new List<ExceptionRequestApprovalHistory>();
             Attachments = new List<ExceptionRequestAttachment>();
-            Notifications = new List<Notification>();
+            //Notifications = new List<Notification>();
         }
 
         public ExceptionRequest(
@@ -53,7 +53,7 @@ namespace AttendanceManagement.Data.ExceptionRequests
 
             ApprovalHistories = new List<ExceptionRequestApprovalHistory>();
             Attachments = new List<ExceptionRequestAttachment>();
-            Notifications = new List<Notification>();
+            //Notifications = new List<Notification>();
         }
 
         public void Approve(int stepOrder)

@@ -1,0 +1,436 @@
+﻿@page "/schedules"
+@using AttendanceManagement.Interfaces
+@using AttendanceManagement.Permissions
+@using Volo.Abp.Application.Dtos
+@using Volo.Abp.AspNetCore.Components.Messages
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(AttendanceManagementPermissions.Schedules.Default)]
+@inject IScheduleAppService ScheduleAppService
+@inject IUiMessageService MessageService
+@inject IAuthorizationService AuthorizationService
+@inject IStringLocalizer<AttendanceManagementResource> L
+@inherits AbpComponentBase
+
+<Card>
+    <CardHeader>
+        <Row Class="justify-content-between">
+            <Column ColumnSize="ColumnSize.IsAuto">
+                <h2>@L["Schedules"]</h2>
+            </Column>
+            <Column ColumnSize="ColumnSize.IsAuto">
+                @if (HasCreatePermission)
+                {
+                    <Button Color="Color.Primary" Clicked="OpenCreateModalAsync">
+                        <Icon Name="IconName.Add" /> @L["NewSchedule"]
+                    </Button>
+                }
+            </Column>
+        </Row>
+    </CardHeader>
+    <CardBody>
+        @if (IsLoading)
+        {
+            <div class="text-center p-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (ScheduleList != null && ScheduleList.Any())
+        {
+            <Table Striped="true" Hoverable="true" Responsive="true">
+                <TableHeader>
+                    <TableRow>
+                        <TableHeaderCell>@L["Name"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Description"]</TableHeaderCell>
+                        <TableHeaderCell>@L["OnSiteDays"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Status"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Actions"]</TableHeaderCell>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    @foreach (var schedule in ScheduleList)
+                    {
+                        <TableRow>
+                            <TableRowCell>@schedule.Name</TableRowCell>
+                            <TableRowCell>@schedule.Description</TableRowCell>
+                            <TableRowCell>
+                                @if (schedule.ScheduleDays != null)
+                                {
+                                    @($"{schedule.ScheduleDays.Count(d => d.IsOnSite)}/7")
+                                }
+                            </TableRowCell>
+                            <TableRowCell>
+                                @if (schedule.IsActive)
+                                {
+                                    <Badge Color="Color.Success">@L["Active"]</Badge>
+                                }
+                                else
+                                {
+                                    <Badge Color="Color.Secondary">@L["Inactive"]</Badge>
+                                }
+                            </TableRowCell>
+                            <TableRowCell>
+                                <Button Color="Color.Info" Size="Size.Small" Clicked="@(() => ViewScheduleDetailsAsync(schedule))">
+                                    <Icon Name="IconName.Eye" /> @L["ViewDetails"]
+                                </Button>
+                                @if (HasUpdatePermission)
+                                {
+                                    <Button Color="Color.Primary" Size="Size.Small" Clicked="@(() => OpenEditModalAsync(schedule.Id))">
+                                        <Icon Name="IconName.Edit" /> @L["Edit"]
+                                    </Button>
+                                }
+                            </TableRowCell>
+                        </TableRow>
+                    }
+                </TableBody>
+            </Table>
+
+        @*     @if (TotalPages > 1)
+            {
+                <Row Class="mt-3">
+                    <Column>
+                        <Pagination>
+                            <PaginationItem Disabled="@(CurrentPage == 1)">
+                                <PaginationLink Clicked="@(() => LoadPageAsync(CurrentPage - 1))">
+                                    <Icon Name="IconName.ChevronLeft" />
+                                </PaginationLink>
+                            </PaginationItem>
+
+                            @for (int i = 1; i <= TotalPages; i++)
+                            {
+                                var page = i;
+                                <PaginationItem Active="@(CurrentPage == page)">
+                                    <PaginationLink Clicked="@(() => LoadPageAsync(page))">
+                                        @page
+                                    </PaginationLink>
+                                </PaginationItem>
+                            }
+
+                            <PaginationItem Disabled="@(CurrentPage == TotalPages)">
+                                <PaginationLink Clicked="@(() => LoadPageAsync(CurrentPage + 1))">
+                                    <Icon Name="IconName.ChevronRight" />
+                                </PaginationLink>
+                            </PaginationItem>
+                        </Pagination>
+                    </Column>
+                </Row>
+            }
+        }
+        else
+        {
+            <Alert Color="Color.Info" Visible="true">
+                <AlertDescription>@L["NoRecordsFound"]</AlertDescription>
+            </Alert> *@
+        }
+    </CardBody>
+</Card>
+
+<Modal @ref="ScheduleModal">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <Form>
+            <ModalHeader>
+                <ModalTitle>@ModalTitle</ModalTitle>
+                <CloseButton Clicked="CloseScheduleModal" />
+            </ModalHeader>
+            <ModalBody>
+                @if (EditingSchedule != null)
+                {
+                    <Field>
+                        <FieldLabel>@L["Name"] *</FieldLabel>
+                        <TextEdit @bind-Text="@EditingSchedule.Name" Placeholder="Enter schedule name" />
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["Description"]</FieldLabel>
+                        <MemoEdit @bind-Text="@EditingSchedule.Description" Rows="3" Placeholder="Enter description" />
+                    </Field>
+
+                    <Divider />
+                    <h5>@L["WeeklySchedule"]</h5>
+
+                    <Table Striped="true" Bordered="true">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>@L["Day"]</TableHeaderCell>
+                                <TableHeaderCell>@L["OnSite"]</TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @if (EditingSchedule.ScheduleDays != null)
+                            {
+                                @foreach (var day in EditingSchedule.ScheduleDays.OrderBy(d => d.DayOfWeek))
+                                {
+                                    <TableRow>
+                                        <TableRowCell>@day.DayOfWeek.ToString()</TableRowCell>
+                                        <TableRowCell>
+                                            <Switch TValue="bool" Checked="@day.IsOnSite" CheckedChanged="@(value => day.IsOnSite = value)" />
+                                        </TableRowCell>
+                                    </TableRow>
+                                }
+                            }
+                        </TableBody>
+                    </Table>
+                }
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseScheduleModal">@L["Cancel"]</Button>
+                <Button Color="Color.Primary" Clicked="SaveScheduleAsync" Loading="@IsSaving">
+                    @L["Save"]
+                </Button>
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+
+<Modal @ref="DetailsModal">
+    <ModalContent Centered="true">
+        <ModalHeader>
+            <ModalTitle>@L["ScheduleDetails"]</ModalTitle>
+            <CloseButton Clicked="CloseDetailsModal" />
+        </ModalHeader>
+        <ModalBody>
+            @if (SelectedSchedule != null)
+            {
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Name"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        <Text>@SelectedSchedule.Name</Text>
+                    </FieldBody>
+                </Field>
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Description"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        <Text>@SelectedSchedule.Description</Text>
+                    </FieldBody>
+                </Field>
+
+                <Divider />
+                <h5>@L["WeeklySchedule"]</h5>
+
+                <Table Striped="true">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHeaderCell>@L["Day"]</TableHeaderCell>
+                            <TableHeaderCell>@L["WorkLocation"]</TableHeaderCell>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        @if (SelectedSchedule.ScheduleDays != null)
+                        {
+                            @foreach (var day in SelectedSchedule.ScheduleDays.OrderBy(d => d.DayOfWeek))
+                            {
+                                <TableRow>
+                                    <TableRowCell>@day.DayOfWeek</TableRowCell>
+                                    <TableRowCell>
+                                        @if (day.IsOnSite)
+                                        {
+                                            <Badge Color="Color.Primary">@L["OnSite"]</Badge>
+                                        }
+                                        else
+                                        {
+                                            <Badge Color="Color.Info">@L["Remote"]</Badge>
+                                        }
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        }
+                    </TableBody>
+                </Table>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseDetailsModal">@L["Close"]</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@code {
+    private List<ScheduleDto> ScheduleList { get; set; }
+    private int TotalCount { get; set; }
+    private int PageSize { get; set; } = 10;
+    private int CurrentPage { get; set; } = 1;
+    private int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    private bool IsLoading { get; set; } = true;
+    private bool IsSaving { get; set; }
+
+    private Modal ScheduleModal { get; set; }
+    private Modal DetailsModal { get; set; }
+
+    private CreateUpdateScheduleDto EditingSchedule { get; set; }
+    private Guid? EditingScheduleId { get; set; }
+    private ScheduleDto SelectedSchedule { get; set; }
+    private string ModalTitle { get; set; }
+
+    private bool HasCreatePermission { get; set; }
+    private bool HasUpdatePermission { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await SetPermissionsAsync();
+            await LoadSchedulesAsync();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error initializing: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task SetPermissionsAsync()
+    {
+        HasCreatePermission = await AuthorizationService.IsGrantedAsync(AttendanceManagementPermissions.Schedules.Create);
+        HasUpdatePermission = await AuthorizationService.IsGrantedAsync(AttendanceManagementPermissions.Schedules.Edit);
+    }
+
+    private async Task LoadSchedulesAsync()
+    {
+        try
+        {
+            var input = new PagedAndSortedResultRequestDto
+            {
+                SkipCount = (CurrentPage - 1) * PageSize,
+                MaxResultCount = PageSize
+            };
+
+            var result = await ScheduleAppService.GetListAsync(input);
+            ScheduleList = result.Items.ToList();
+            TotalCount = (int)result.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error loading schedules: {ex.Message}");
+            ScheduleList = new List<ScheduleDto>();
+        }
+    }
+
+    private async Task LoadPageAsync(int page)
+    {
+        CurrentPage = page;
+        IsLoading = true;
+        await LoadSchedulesAsync();
+        IsLoading = false;
+    }
+
+    private async Task OpenCreateModalAsync()
+    {
+        try
+        {
+            EditingScheduleId = null;
+            EditingSchedule = new CreateUpdateScheduleDto
+            {
+                ScheduleDays = new List<CreateScheduleDayDto>()
+            };
+
+            // Initialize all 7 days
+            for (int i = 0; i <= 6; i++)
+            {
+                EditingSchedule.ScheduleDays.Add(new CreateScheduleDayDto
+                {
+                    DayOfWeek = (DayOfWeek)i,
+                    IsOnSite = false
+                });
+            }
+
+            ModalTitle = L["NewSchedule"];
+            await ScheduleModal.Show();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error opening create modal: {ex.Message}");
+        }
+    }
+
+    private async Task OpenEditModalAsync(Guid id)
+    {
+        try
+        {
+            EditingScheduleId = id;
+            var schedule = await ScheduleAppService.GetAsync(id);
+            EditingSchedule = new CreateUpdateScheduleDto
+            {
+                Name = schedule.Name,
+                Description = schedule.Description,
+                ScheduleDays = schedule.ScheduleDays?.Select(d => new CreateScheduleDayDto
+                {
+                    DayOfWeek = d.DayOfWeek,
+                    IsOnSite = d.IsOnSite
+                }).ToList() ?? new List<CreateScheduleDayDto>()
+            };
+            ModalTitle = L["EditSchedule"];
+            await ScheduleModal.Show();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error loading schedule: {ex.Message}");
+        }
+    }
+
+    private async Task ViewScheduleDetailsAsync(ScheduleDto schedule)
+    {
+        try
+        {
+            SelectedSchedule = schedule;
+            await DetailsModal.Show();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error opening details: {ex.Message}");
+        }
+    }
+
+    private async Task CloseScheduleModal()
+    {
+        await ScheduleModal.Hide();
+        StateHasChanged();
+    }
+
+    private async Task CloseDetailsModal()
+    {
+        await DetailsModal.Hide();
+        StateHasChanged();
+    }
+
+    private async Task SaveScheduleAsync()
+    {
+        try
+        {
+            if (EditingSchedule == null)
+            {
+                await MessageService.Error("Schedule data is missing.");
+                return;
+            }
+
+            IsSaving = true;
+
+            if (EditingScheduleId == null)
+            {
+                await ScheduleAppService.CreateAsync(EditingSchedule);
+            }
+            else
+            {
+                await ScheduleAppService.UpdateAsync(EditingScheduleId.Value, EditingSchedule);
+            }
+
+            await CloseScheduleModal();
+            await LoadSchedulesAsync();
+            await MessageService.Success(L["SuccessfullySaved"]);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error saving: {ex.Message}");
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+}

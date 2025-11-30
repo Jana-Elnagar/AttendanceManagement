@@ -7,6 +7,7 @@ using AttendanceManagement.Interfaces;
 using AttendanceManagement.Permissions;
 using AutoMapper.Internal.Mappers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,21 +25,25 @@ namespace AttendanceManagement.Services
 {
     public class ExceptionRequestAppService : ApplicationService, IExceptionRequestAppService
     {
-        private readonly IRepository<ExceptionRequest, Guid> _exceptionRequestRepository;
         private readonly IRepository<Employee, Guid> _employeeRepository;
         private readonly IRepository<Workflow, Guid> _workflowRepository;
+        private readonly IExceptionRequestRepository _exceptionRequestRepository;
         private readonly ICurrentUser _currentUser;
+        private readonly ILogger<ExceptionRequestAppService> _logger;
 
         public ExceptionRequestAppService(
-            IRepository<ExceptionRequest, Guid> exceptionRequestRepository,
+            IExceptionRequestRepository exceptionRequestRepository,
             IRepository<Employee, Guid> employeeRepository,
             IRepository<Workflow, Guid> workflowRepository,
-            ICurrentUser currentUser)
+            ICurrentUser currentUser,
+            ILogger<ExceptionRequestAppService> logger
+            )
         {
             _exceptionRequestRepository = exceptionRequestRepository;
             _employeeRepository = employeeRepository;
             _workflowRepository = workflowRepository;
             _currentUser = currentUser;
+            _logger = logger;
         }
 
         public async Task<ExceptionRequestDto> GetAsync(Guid id)
@@ -224,19 +229,19 @@ namespace AttendanceManagement.Services
             var employee = await _employeeRepository
                 .FirstOrDefaultAsync(e => e.UserId == _currentUser.Id.Value);
 
-            if (employee != null) {
+            if (employee == null)
+            {
+                _logger.LogDebug("employee with id: " + _currentUser.Id + "NOT Found");
                 throw new UserFriendlyException("Employee record not found for current user.");
             }
+            else
+            {
+                _logger.LogDebug("employee with name: " + employee.Id + "Found");
+            }
+              
 
-            var queryable = await _exceptionRequestRepository.WithDetailsAsync(
-                er => er.Workflow,
-                er => er.ApprovalHistories);
-
-            var requests = await queryable
-                .Where(er => er.EmployeeId == employee.Id)
-                .OrderByDescending(er => er.CreationTime)
-                .ToListAsync();
-
+            var requests = await _exceptionRequestRepository.GetExceptionRequestsByEmployeeId(employee.Id);
+            _logger.LogDebug("requests: " + requests);
             return ObjectMapper.Map<List<ExceptionRequest>, List<ExceptionRequestDto>>(requests);
         }
 

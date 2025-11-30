@@ -1,0 +1,513 @@
+﻿@page "/employees"
+@using AttendanceManagement.Interfaces
+@using AttendanceManagement.Permissions
+@using Volo.Abp.Application.Dtos
+@using Volo.Abp.AspNetCore.Components.Messages
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(AttendanceManagementPermissions.Employees.Default)]
+@inject IEmployeeAppService EmployeeAppService
+@inject IGroupAppService GroupAppService
+@inject IWorkflowAppService WorkflowAppService
+@inject IUiMessageService MessageService
+@inject IAuthorizationService AuthorizationService
+@inject IStringLocalizer<AttendanceManagementResource> L
+@inherits AbpComponentBase
+
+<Card>
+    <CardHeader>
+        <Row Class="justify-content-between">
+            <Column ColumnSize="ColumnSize.IsAuto">
+                <h2>@L["Employees"]</h2>
+            </Column>
+            <Column ColumnSize="ColumnSize.IsAuto">
+                @if (HasCreatePermission)
+                {
+                    <Button Color="Color.Primary" Clicked="OpenCreateModalAsync">
+                        <Icon Name="IconName.Add" /> @L["NewEmployee"]
+                    </Button>
+                }
+            </Column>
+        </Row>
+    </CardHeader>
+    <CardBody>
+        @if (IsLoading)
+        {
+            <div class="text-center p-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (EmployeeList != null && EmployeeList.Any())
+        {
+            <Table Striped="true" Hoverable="true" Responsive="true">
+                <TableHeader>
+                    <TableRow>
+                        <TableHeaderCell>@L["Name"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Department"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Sector"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Group"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Status"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Actions"]</TableHeaderCell>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    @foreach (var employee in EmployeeList)
+                    {
+                        <TableRow>
+                            <TableRowCell>
+                                <a href="javascript:void(0)" @onclick="@(() => OpenDetailsModalAsync(employee.Id))">
+                                    @employee.Name
+                                </a>
+                            </TableRowCell>
+                            <TableRowCell>@employee.Department</TableRowCell>
+                            <TableRowCell>@employee.Sector</TableRowCell>
+                            <TableRowCell>@(employee.GroupName ?? "-")</TableRowCell>
+                            <TableRowCell>
+                                @if (employee.IsActive)
+                                {
+                                    <Badge Color="Color.Success">@L["Active"]</Badge>
+                                }
+                                else
+                                {
+                                    <Badge Color="Color.Secondary">@L["Inactive"]</Badge>
+                                }
+                            </TableRowCell>
+                            <TableRowCell>
+                                <Dropdown>
+                                    <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                        @L["Actions"]
+                                    </DropdownToggle>
+                                    <DropdownMenu>
+                                        <DropdownItem Clicked="@(() => OpenDetailsModalAsync(employee.Id))">
+                                            <Icon Name="IconName.Eye" /> @L["Details"]
+                                        </DropdownItem>
+                                        @if (HasUpdatePermission)
+                                        {
+                                            <DropdownItem Clicked="@(() => OpenEditModalAsync(employee.Id))">
+                                                <Icon Name="IconName.Edit" /> @L["Edit"]
+                                            </DropdownItem>
+                                            @if (employee.IsActive)
+                                            {
+                                                <DropdownItem Clicked="@(() => DeactivateEmployeeAsync(employee.Id))">
+                                                    <Icon Name="IconName.Ban" /> @L["Deactivate"]
+                                                </DropdownItem>
+                                            }
+                                            else
+                                            {
+                                                <DropdownItem Clicked="@(() => ActivateEmployeeAsync(employee.Id))">
+                                                    <Icon Name="IconName.Check" /> @L["Activate"]
+                                                </DropdownItem>
+                                            }
+                                        }
+                                    </DropdownMenu>
+                                </Dropdown>
+                            </TableRowCell>
+                        </TableRow>
+                    }
+                </TableBody>
+            </Table>
+
+            @* Simple Pagination *@
+        @*     @if (TotalPages > 1)
+            {
+                <Row Class="mt-3">
+                    <Column>
+                        <Pagination>
+                            <PaginationItem Disabled="@(CurrentPage == 1)">
+                                <PaginationLink Clicked="@(() => LoadPageAsync(CurrentPage - 1))">
+                                    <Icon Name="IconName.ChevronLeft" />
+                                </PaginationLink>
+                            </PaginationItem>
+
+                            @for (int i = 1; i <= TotalPages; i++)
+                            {
+                                var page = i;
+                                <PaginationItem Active="@(CurrentPage == page)">
+                                    <PaginationLink Clicked="@(() => LoadPageAsync(page))">
+                                        @page
+                                    </PaginationLink>
+                                </PaginationItem>
+                            }
+
+                            <PaginationItem Disabled="@(CurrentPage == TotalPages)">
+                                <PaginationLink Clicked="@(() => LoadPageAsync(CurrentPage + 1))">
+                                    <Icon Name="IconName.ChevronRight" />
+                                </PaginationLink>
+                            </PaginationItem>
+                        </Pagination>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.IsAuto">
+                        <span>Page @CurrentPage of @TotalPages (@TotalCount total)</span>
+                    </Column>
+                </Row>
+            }
+        }
+        else
+        {
+            <Alert Color="Color.Info" Visible="true">
+                <AlertDescription>
+                    @L["NoRecordsFound"]
+                </AlertDescription>
+            </Alert>
+        } *@
+        }
+    </CardBody>
+</Card>
+
+<Modal @ref="EmployeeModal">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <Form>
+            <ModalHeader>
+                <ModalTitle>@ModalTitle</ModalTitle>
+                <CloseButton Clicked="CloseEmployeeModal" />
+            </ModalHeader>
+            <ModalBody>
+                @if (EditingEmployee != null)
+                {
+                    <Field>
+                        <FieldLabel>@L["Name"] *</FieldLabel>
+                        <TextEdit @bind-Text="@EditingEmployee.Name" Placeholder="Enter employee name" />
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["Department"]</FieldLabel>
+                        <TextEdit @bind-Text="@EditingEmployee.Department" Placeholder="Enter department" />
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["Sector"]</FieldLabel>
+                        <TextEdit @bind-Text="@EditingEmployee.Sector" Placeholder="Enter sector" />
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["Group"]</FieldLabel>
+                        <Select TValue="Guid?" @bind-SelectedValue="@EditingEmployee.GroupId">
+                            <SelectItem Value="@((Guid?)null)">-- @L["Select"] --</SelectItem>
+                            @if (Groups != null)
+                            {
+                                @foreach (var group in Groups)
+                                {
+                                    <SelectItem Value="@group.Id">@group.Name</SelectItem>
+                                }
+                            }
+                        </Select>
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["Workflow"]</FieldLabel>
+                        <Select TValue="Guid?" @bind-SelectedValue="@EditingEmployee.WorkflowId">
+                            <SelectItem Value="@((Guid?)null)">-- @L["Select"] --</SelectItem>
+                            @if (Workflows != null)
+                            {
+                                @foreach (var workflow in Workflows)
+                                {
+                                    <SelectItem Value="@workflow.Id">@workflow.Name</SelectItem>
+                                }
+                            }
+                        </Select>
+                    </Field>
+                }
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseEmployeeModal">@L["Cancel"]</Button>
+                <Button Color="Color.Primary" Clicked="SaveEmployeeAsync" Loading="@IsSaving">
+                    @L["Save"]
+                </Button>
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+
+<Modal @ref="DetailsModal">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <ModalHeader>
+            <ModalTitle>@L["EmployeeDetails"]</ModalTitle>
+            <CloseButton Clicked="CloseDetailsModal" />
+        </ModalHeader>
+        <ModalBody>
+            @if (SelectedEmployeeDetails != null)
+            {
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Name"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        <Text>@SelectedEmployeeDetails.Name</Text>
+                    </FieldBody>
+                </Field>
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Department"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        <Text>@SelectedEmployeeDetails.Department</Text>
+                    </FieldBody>
+                </Field>
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Sector"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        <Text>@SelectedEmployeeDetails.Sector</Text>
+                    </FieldBody>
+                </Field>
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Group"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        <Text>@(SelectedEmployeeDetails.GroupName ?? "-")</Text>
+                    </FieldBody>
+                </Field>
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Status"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        @if (SelectedEmployeeDetails.IsActive)
+                        {
+                            <Badge Color="Color.Success">@L["Active"]</Badge>
+                        }
+                        else
+                        {
+                            <Badge Color="Color.Secondary">@L["Inactive"]</Badge>
+                        }
+                    </FieldBody>
+                </Field>
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseDetailsModal">@L["Close"]</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@code {
+    private List<EmployeeDto> EmployeeList { get; set; }
+    private int TotalCount { get; set; }
+    private int PageSize { get; set; } = 10;
+    private int CurrentPage { get; set; } = 1;
+    private int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    private bool IsLoading { get; set; } = true;
+    private bool IsSaving { get; set; }
+
+    private Modal EmployeeModal { get; set; }
+    private Modal DetailsModal { get; set; }
+
+    private CreateUpdateEmployeeDto EditingEmployee { get; set; }
+    private Guid? EditingEmployeeId { get; set; }
+    private EmployeeWithDetailsDto SelectedEmployeeDetails { get; set; }
+    private string ModalTitle { get; set; }
+
+    private List<GroupDto> Groups { get; set; }
+    private List<WorkflowDto> Workflows { get; set; }
+
+    private bool HasCreatePermission { get; set; }
+    private bool HasUpdatePermission { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await SetPermissionsAsync();
+            await LoadGroupsAsync();
+            await LoadWorkflowsAsync();
+            await LoadEmployeesAsync();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error initializing: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task SetPermissionsAsync()
+    {
+        HasCreatePermission = await AuthorizationService.IsGrantedAsync(AttendanceManagementPermissions.Employees.Create);
+        HasUpdatePermission = await AuthorizationService.IsGrantedAsync(AttendanceManagementPermissions.Employees.Edit);
+    }
+
+    private async Task LoadEmployeesAsync()
+    {
+        try
+        {
+            var input = new PagedAndSortedResultRequestDto
+            {
+                SkipCount = (CurrentPage - 1) * PageSize,
+                MaxResultCount = PageSize
+            };
+
+            var result = await EmployeeAppService.GetListAsync(input);
+            EmployeeList = result.Items.ToList();
+            TotalCount = (int)result.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error loading employees: {ex.Message}");
+            EmployeeList = new List<EmployeeDto>();
+        }
+    }
+
+    private async Task LoadPageAsync(int page)
+    {
+        CurrentPage = page;
+        IsLoading = true;
+        await LoadEmployeesAsync();
+        IsLoading = false;
+    }
+
+    private async Task LoadGroupsAsync()
+    {
+        try
+        {
+            Groups = await GroupAppService.GetActiveGroupsAsync();
+        }
+        catch (Exception ex)
+        {
+            Groups = new List<GroupDto>();
+            await MessageService.Error($"Error loading groups: {ex.Message}");
+        }
+    }
+
+    private async Task LoadWorkflowsAsync()
+    {
+        try
+        {
+            Workflows = await WorkflowAppService.GetActiveWorkflowsAsync();
+        }
+        catch (Exception ex)
+        {
+            Workflows = new List<WorkflowDto>();
+            await MessageService.Error($"Error loading workflows: {ex.Message}");
+        }
+    }
+
+    private async Task OpenCreateModalAsync()
+    {
+        try
+        {
+            EditingEmployeeId = null;
+            EditingEmployee = new CreateUpdateEmployeeDto();
+            ModalTitle = L["NewEmployee"];
+            await EmployeeModal.Show();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error opening create modal: {ex.Message}");
+        }
+    }
+
+    private async Task OpenEditModalAsync(Guid id)
+    {
+        try
+        {
+            EditingEmployeeId = id;
+            var employee = await EmployeeAppService.GetAsync(id);
+            EditingEmployee = new CreateUpdateEmployeeDto
+            {
+                UserId = employee.UserId,
+                Name = employee.Name,
+                Department = employee.Department,
+                Sector = employee.Sector,
+                GroupId = employee.GroupId,
+                WorkflowId = employee.WorkflowId
+            };
+            ModalTitle = L["EditEmployee"];
+            await EmployeeModal.Show();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error loading employee: {ex.Message}");
+        }
+    }
+
+    private async Task OpenDetailsModalAsync(Guid id)
+    {
+        try
+        {
+            SelectedEmployeeDetails = await EmployeeAppService.GetWithDetailsAsync(id);
+            await DetailsModal.Show();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error loading details: {ex.Message}");
+        }
+    }
+
+    private async Task CloseEmployeeModal()
+    {
+        await EmployeeModal.Hide();
+        StateHasChanged();
+    }
+
+    private async Task CloseDetailsModal()
+    {
+        await DetailsModal.Hide();
+        StateHasChanged();
+    }
+
+    private async Task SaveEmployeeAsync()
+    {
+        try
+        {
+            if (EditingEmployee == null)
+            {
+                await MessageService.Error("Employee data is missing.");
+                return;
+            }
+
+            IsSaving = true;
+
+            if (EditingEmployeeId == null)
+            {
+                await EmployeeAppService.CreateAsync(EditingEmployee);
+            }
+            else
+            {
+                await EmployeeAppService.UpdateAsync(EditingEmployeeId.Value, EditingEmployee);
+            }
+
+            await CloseEmployeeModal();
+            await LoadEmployeesAsync();
+            await MessageService.Success(L["SuccessfullySaved"]);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error saving: {ex.Message}");
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private async Task ActivateEmployeeAsync(Guid id)
+    {
+        try
+        {
+            if (await MessageService.Confirm(L["ActivateConfirmation"]))
+            {
+                await EmployeeAppService.ActivateAsync(id);
+                await LoadEmployeesAsync();
+                await MessageService.Success(L["SuccessfullyActivated"]);
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error: {ex.Message}");
+        }
+    }
+
+    private async Task DeactivateEmployeeAsync(Guid id)
+    {
+        try
+        {
+            if (await MessageService.Confirm(L["DeactivateConfirmation"]))
+            {
+                await EmployeeAppService.DeactivateAsync(id);
+                await LoadEmployeesAsync();
+                await MessageService.Success(L["SuccessfullyDeactivated"]);
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error: {ex.Message}");
+        }
+    }
+}

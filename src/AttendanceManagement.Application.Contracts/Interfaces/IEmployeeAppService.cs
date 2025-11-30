@@ -14,6 +14,7 @@ namespace AttendanceManagement.Interfaces
     {
         Task<EmployeeWithDetailsDto> GetWithDetailsAsync(Guid id);
         Task<List<EmployeeDto>> GetActiveEmployeesAsync();
+        Task<EmployeeDto> GetByUserIdAsync(Guid userId);
         Task ActivateAsync(Guid id);
         Task DeactivateAsync(Guid id);
         Task AssignManagerAsync(AssignManagerDto input);

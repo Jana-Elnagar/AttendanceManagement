@@ -1,0 +1,448 @@
+﻿@page "/pending-approvals"
+@using AttendanceManagement.Dtos.ExceptionRequests
+@using AttendanceManagement.Interfaces
+@using AttendanceManagement.Permissions
+@using AttendanceManagement.Enums
+@using Volo.Abp.AspNetCore.Components.Messages
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(AttendanceManagementPermissions.ExceptionRequests.Approve)]
+@inject IExceptionRequestAppService ExceptionRequestAppService
+@inject IUiMessageService MessageService
+@inject IAuthorizationService AuthorizationService
+@inherits AbpComponentBase
+
+<Card>
+    <CardHeader>
+        <h2>@L["PendingApprovals"]</h2>
+    </CardHeader>
+    <CardBody>
+        @if (IsLoading)
+        {
+            <div class="text-center p-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (PendingRequests != null && PendingRequests.Any())
+        {
+            <Table Striped="true" Hoverable="true" Responsive="true">
+                <TableHeader>
+                    <TableRow>
+                        <TableHeaderCell>@L["Employee"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Date"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Type"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Reason"]</TableHeaderCell>
+                        <TableHeaderCell>@L["CurrentStep"]</TableHeaderCell>
+                        <TableHeaderCell>@L["SubmittedOn"]</TableHeaderCell>
+                        <TableHeaderCell>@L["Actions"]</TableHeaderCell>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    @foreach (var request in PendingRequests)
+                    {
+                        <TableRow>
+                            <TableRowCell>@(request.EmployeeName ?? "-")</TableRowCell>
+                            <TableRowCell>@request.ExceptionDate.ToString("yyyy-MM-dd (dddd)")</TableRowCell>
+                            <TableRowCell>
+                                @if (request.Type == ExceptionRequestType.Sick)
+                                {
+                                    <Badge Color="Color.Danger">@L["Sick"]</Badge>
+                                }
+                                else
+                                {
+                                    <Badge Color="Color.Warning">@L["SpecialCondition"]</Badge>
+                                }
+                            </TableRowCell>
+                            <TableRowCell>
+                                @if (!string.IsNullOrEmpty(request.Reason))
+                                {
+                                    @(request.Reason.Length > 50 ? request.Reason.Substring(0, 50) + "..." : request.Reason)
+                                }
+                            </TableRowCell>
+                            <TableRowCell>@request.CurrentStepOrder</TableRowCell>
+                            <TableRowCell>@request.CreationTime.ToString("yyyy-MM-dd")</TableRowCell>
+                            <TableRowCell>
+                                <Button Color="Color.Success" Size="Size.Small" Clicked="@(() => OpenApprovalModalAsync(request.Id, ApprovalAction.Approved))">
+                                    <Icon Name="IconName.Check" /> @L["Approve"]
+                                </Button>
+                                <Button Color="Color.Danger" Size="Size.Small" Clicked="@(() => OpenApprovalModalAsync(request.Id, ApprovalAction.Rejected))" Margin="Margin.Is1.FromStart">
+                                    <Icon Name="IconName.Times" /> @L["Reject"]
+                                </Button>
+                                <Button Color="Color.Info" Size="Size.Small" Clicked="@(() => ViewRequestDetailsAsync(request.Id))" Margin="Margin.Is1.FromStart">
+                                    <Icon Name="IconName.Eye" /> @L["Details"]
+                                </Button>
+                            </TableRowCell>
+                        </TableRow>
+                    }
+                </TableBody>
+            </Table>
+        }
+        else
+        {
+            <Alert Color="Color.Info" Visible="true">
+                <AlertDescription>
+                    <Icon Name="IconName.InfoCircle" /> @L["NoPendingApprovals"]
+                </AlertDescription>
+            </Alert>
+        }
+    </CardBody>
+</Card>
+
+@* Approval Modal *@
+<Modal @ref="ApprovalModal">
+    <ModalContent Centered="true">
+        <Form>
+            <ModalHeader>
+                <ModalTitle>
+                    @if (ApprovalInput != null)
+                    {
+                        @(ApprovalInput.Action == ApprovalAction.Approved ? L["ApproveRequest"] : L["RejectRequest"])
+                    }
+                </ModalTitle>
+                <CloseButton Clicked="CloseApprovalModalAsync" />
+            </ModalHeader>
+            <ModalBody>
+                @if (ApprovalInput != null)
+                {
+                    <Alert Color="@(ApprovalInput.Action == ApprovalAction.Approved ? Color.Success : Color.Danger)" Visible="true">
+                        <AlertDescription>
+                            @if (ApprovalInput.Action == ApprovalAction.Approved)
+                            {
+                                <Icon Name="IconName.Check" /> 
+                                @L["ApproveConfirmationMessage"]
+                            }
+                            else
+                            {
+                                <Icon Name="IconName.Times" /> 
+                                @L["RejectConfirmationMessage"]
+                            }
+                        </AlertDescription>
+                    </Alert>
+
+                    <Field>
+                        <FieldLabel>@L["Notes"]</FieldLabel>
+                        <MemoEdit @bind-Text="@ApprovalInput.Notes" Rows="4" Placeholder="@L["OptionalNotes"]" />
+                    </Field>
+                }
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseApprovalModalAsync">@L["Cancel"]</Button>
+                @if (ApprovalInput != null)
+                {
+                    <Button Color="@(ApprovalInput.Action == ApprovalAction.Approved ? Color.Success : Color.Danger)"
+                            Clicked="SubmitApprovalAsync"
+                            Loading="@IsProcessing">
+                        @(ApprovalInput.Action == ApprovalAction.Approved ? L["Approve"] : L["Reject"])
+                    </Button>
+                }
+            </ModalFooter>
+        </Form>
+    </ModalContent>
+</Modal>
+
+@* Details Modal *@
+<Modal @ref="DetailsModal">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <ModalHeader>
+            <ModalTitle>@L["RequestDetails"]</ModalTitle>
+            <CloseButton Clicked="CloseDetailsModalAsync" />
+        </ModalHeader>
+        <ModalBody>
+            @if (SelectedRequest != null)
+            {
+                <Row>
+                    <Column>
+                        <Field Horizontal="true">
+                            <FieldLabel ColumnSize="ColumnSize.Is3">@L["Employee"]</FieldLabel>
+                            <FieldBody ColumnSize="ColumnSize.Is9">@(SelectedRequest.EmployeeName ?? "-")</FieldBody>
+                        </Field>
+                    </Column>
+                    <Column>
+                        <Field Horizontal="true">
+                            <FieldLabel ColumnSize="ColumnSize.Is3">@L["ExceptionDate"]</FieldLabel>
+                            <FieldBody ColumnSize="ColumnSize.Is9">@SelectedRequest.ExceptionDate.ToString("yyyy-MM-dd (dddd)")</FieldBody>
+                        </Field>
+                    </Column>
+                    <Column>
+                        <Field Horizontal="true">
+                            <FieldLabel ColumnSize="ColumnSize.Is3">@L["Type"]</FieldLabel>
+                            <FieldBody ColumnSize="ColumnSize.Is9">
+                                @if (SelectedRequest.Type == ExceptionRequestType.Sick)
+                                {
+                                    <Badge Color="Color.Danger">@L["Sick"]</Badge>
+                                }
+                                else
+                                {
+                                    <Badge Color="Color.Warning">@L["SpecialCondition"]</Badge>
+                                }
+                            </FieldBody>
+                        </Field>
+                    </Column>
+                </Row>
+
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Reason"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">@SelectedRequest.Reason</FieldBody>
+                </Field>
+
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Status"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        @switch (SelectedRequest.Status)
+                        {
+                            case ExceptionRequestStatus.Pending:
+                                <Badge Color="Color.Warning">@L["Pending"]</Badge>
+                                break;
+                            case ExceptionRequestStatus.Approved:
+                                <Badge Color="Color.Success">@L["Approved"]</Badge>
+                                break;
+                            case ExceptionRequestStatus.Rejected:
+                                <Badge Color="Color.Danger">@L["Rejected"]</Badge>
+                                break;
+                            case ExceptionRequestStatus.Cancelled:
+                                <Badge Color="Color.Secondary">@L["Cancelled"]</Badge>
+                                break;
+                        }
+                    </FieldBody>
+                </Field>
+
+                @if (SelectedRequest.Attachments != null && SelectedRequest.Attachments.Any())
+                {
+                    <Divider />
+                    <h5>@L["Attachments"]</h5>
+                    <ListGroup>
+                        @foreach (var attachment in SelectedRequest.Attachments)
+                        {
+                            <ListGroupItem>
+                                <Icon Name="IconName.FileAlt" />
+                                @attachment.FileName
+                            </ListGroupItem>
+                        }
+                    </ListGroup>
+                }
+
+                @if (SelectedRequest.ApprovalHistories != null && SelectedRequest.ApprovalHistories.Any())
+                {
+                    <Divider />
+                    <h5>@L["ApprovalHistory"]</h5>
+                    <Table Striped="true">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>@L["Step"]</TableHeaderCell>
+                                <TableHeaderCell>@L["Approver"]</TableHeaderCell>
+                                <TableHeaderCell>@L["Action"]</TableHeaderCell>
+                                <TableHeaderCell>@L["Notes"]</TableHeaderCell>
+                                <TableHeaderCell>@L["Date"]</TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var history in SelectedRequest.ApprovalHistories.OrderBy(h => h.StepOrder))
+                            {
+                                <TableRow>
+                                    <TableRowCell>@history.StepOrder</TableRowCell>
+                                    <TableRowCell>@(history.ApproverEmployeeName ?? "-")</TableRowCell>
+                                    <TableRowCell>
+                                        @switch (history.Action)
+                                        {
+                                            case ApprovalAction.Approved:
+                                                <Badge Color="Color.Success">@L["Approved"]</Badge>
+                                                break;
+                                            case ApprovalAction.Rejected:
+                                                <Badge Color="Color.Danger">@L["Rejected"]</Badge>
+                                                break;
+                                            case ApprovalAction.Pending:
+                                                <Badge Color="Color.Warning">@L["Pending"]</Badge>
+                                                break;
+                                        }
+                                    </TableRowCell>
+                                    <TableRowCell>@(history.Notes ?? "-")</TableRowCell>
+                                    <TableRowCell>@history.ActionDateTime.ToString("yyyy-MM-dd HH:mm")</TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                }
+            }
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="CloseDetailsModalAsync">@L["Close"]</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@code {
+    private List<ExceptionRequestDto> PendingRequests { get; set; } = new();
+    private Modal ApprovalModal { get; set; }
+    private Modal DetailsModal { get; set; }
+
+    private ApproveRejectExceptionRequestDto ApprovalInput { get; set; }
+    private ExceptionRequestDto SelectedRequest { get; set; }
+    private bool IsLoading { get; set; } = true;
+    private bool IsProcessing { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadPendingApprovalsAsync();
+        }
+        catch
+        {
+            PendingRequests = new List<ExceptionRequestDto>();
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadPendingApprovalsAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            StateHasChanged();
+            
+            var result = await ExceptionRequestAppService.GetPendingApprovalsAsync();
+            PendingRequests = result ?? new List<ExceptionRequestDto>();
+        }
+        catch (Exception ex)
+        {
+            PendingRequests = new List<ExceptionRequestDto>();
+            try
+            {
+                await MessageService.Error($"Error loading approvals: {ex.Message}");
+            }
+            catch
+            {
+                // Ignore message service errors to prevent cascading
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenApprovalModalAsync(Guid requestId, ApprovalAction action)
+    {
+        try
+        {
+            ApprovalInput = new ApproveRejectExceptionRequestDto
+            {
+                ExceptionRequestId = requestId,
+                Action = action,
+                Notes = string.Empty
+            };
+            if (ApprovalModal != null)
+            {
+                await ApprovalModal.Show();
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error opening modal: {ex.Message}");
+            }
+            catch { }
+        }
+    }
+
+    private async Task CloseApprovalModalAsync()
+    {
+        try
+        {
+            if (ApprovalModal != null)
+            {
+                await ApprovalModal.Hide();
+            }
+            StateHasChanged();
+        }
+        catch { }
+    }
+
+    private async Task SubmitApprovalAsync()
+    {
+        try
+        {
+            if (ApprovalInput == null)
+            {
+                try
+                {
+                    await MessageService.Error("Approval data is missing.");
+                }
+                catch { }
+                return;
+            }
+
+            IsProcessing = true;
+            StateHasChanged();
+
+            await ExceptionRequestAppService.ApproveOrRejectAsync(ApprovalInput);
+            await LoadPendingApprovalsAsync();
+            await CloseApprovalModalAsync();
+
+            try
+            {
+                await MessageService.Success(
+                    ApprovalInput.Action == ApprovalAction.Approved
+                        ? L["RequestApprovedSuccessfully"]
+                        : L["RequestRejectedSuccessfully"]
+                );
+            }
+            catch { }
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error(ex.Message);
+            }
+            catch { }
+        }
+        finally
+        {
+            IsProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ViewRequestDetailsAsync(Guid id)
+    {
+        try
+        {
+            SelectedRequest = await ExceptionRequestAppService.GetAsync(id);
+            if (DetailsModal != null)
+            {
+                await DetailsModal.Show();
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await MessageService.Error($"Error loading details: {ex.Message}");
+            }
+            catch { }
+        }
+    }
+
+    private async Task CloseDetailsModalAsync()
+    {
+        try
+        {
+            if (DetailsModal != null)
+            {
+                await DetailsModal.Hide();
+            }
+            StateHasChanged();
+        }
+        catch { }
+    }
+}

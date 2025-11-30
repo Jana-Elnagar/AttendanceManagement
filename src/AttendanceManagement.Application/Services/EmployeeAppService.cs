@@ -119,7 +119,15 @@ namespace AttendanceManagement.Services
 
             return ObjectMapper.Map<List<Employee>, List<EmployeeDto>>(employees);
         }
-
+        public async Task<EmployeeDto> GetByUserIdAsync(Guid userId)
+        {
+            var employee = await Repository.FirstOrDefaultAsync(e => e.UserId == userId);
+            if (employee == null)
+            {
+                throw new UserFriendlyException("Employee record not found for current user.");
+            }
+            return ObjectMapper.Map<Employee, EmployeeDto>(employee);
+        }
         public async Task ActivateAsync(Guid id)
         {
             await CheckUpdatePolicyAsync();

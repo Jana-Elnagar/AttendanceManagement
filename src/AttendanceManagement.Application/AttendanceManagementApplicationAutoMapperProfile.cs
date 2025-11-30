@@ -20,8 +20,6 @@ public class AttendanceManagementApplicationAutoMapperProfile : Profile
 
         // Employee mappings
         CreateMap<Employee, EmployeeDto>()
-            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.UserName : null))
-            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
             .ForMember(dest => dest.GroupName, opt => opt.MapFrom(src => src.Group != null ? src.Group.Name : null))
             .ForMember(dest => dest.WorkflowName, opt => opt.MapFrom(src => src.Workflow != null ? src.Workflow.Name : null));
 

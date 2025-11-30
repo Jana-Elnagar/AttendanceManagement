@@ -6,6 +6,7 @@ using AttendanceManagement.Interfaces;
 using AttendanceManagement.Permissions;
 using AutoMapper.Internal.Mappers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,15 +26,21 @@ namespace AttendanceManagement.Services
     {
         private readonly IRepository<Employee, Guid> _employeeRepository;
         private readonly IRepository<Group, Guid> _groupRepository;
+        private readonly IScheduleRepository _scheduleRepository;
+        private readonly ILogger<EmployeeAppService> _logger;
 
         public ScheduleAppService(
+            ILogger<EmployeeAppService> logger,
             IRepository<Schedule, Guid> repository,
             IRepository<Employee, Guid> employeeRepository,
-            IRepository<Group, Guid> groupRepository)
+            IRepository<Group, Guid> groupRepository,
+            IScheduleRepository scheduleRepository)
             : base(repository)
         {
+            _logger = logger;
             _employeeRepository = employeeRepository;
             _groupRepository = groupRepository;
+            _scheduleRepository = scheduleRepository;
 
             GetPolicyName = AttendanceManagementPermissions.Schedules.Default;
             GetListPolicyName = AttendanceManagementPermissions.Schedules.Default;
@@ -124,15 +131,25 @@ namespace AttendanceManagement.Services
 
         public async Task<ScheduleAssignmentDto> GetEmployeeCurrentScheduleAsync(Guid employeeId)
         {
-            var employee = await _employeeRepository.GetAsync(employeeId);
+            _logger.LogDebug("Request for Employee ID" + employeeId + " Schedule");
 
-            var currentAssignment = employee.ScheduleAssignments
-                .Where(sa => sa.EffectiveFrom <= DateTime.Now
-                    && (sa.EffectiveTo == null || sa.EffectiveTo >= DateTime.Now))
-                .FirstOrDefault();
+            var employee = await _employeeRepository.GetAsync(employeeId);
+           
+
+            if (employee != null)
+            {
+                _logger.LogDebug("Employee " + employee.Name + " Found");
+            }
+            else
+            {
+                _logger.LogDebug("Employee " + employeeId+ " NOT Found");
+            }
+
+            var currentAssignment = await _scheduleRepository.GetScheduleAssignementByEmployeeId(employeeId);    
 
             if (currentAssignment == null)
             {
+                _logger.LogDebug("NO Schedule Assignment Found.");
                 return null;
             }
 
