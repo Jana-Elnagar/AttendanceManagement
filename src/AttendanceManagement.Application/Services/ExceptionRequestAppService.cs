@@ -419,40 +419,80 @@ namespace AttendanceManagement.Services
             }
 
             // Filter requests where current user can approve
-            var myPendingRequests = allPendingRequests
-                .Where(er => er.Workflow != null 
-                    && er.Workflow.WorkflowSteps != null)
-                .Where(er =>
+            // Only show requests that are at the exact step where the current user is assigned as approver
+            var myPendingRequests = new List<ExceptionRequest>();
+
+            foreach (var er in allPendingRequests)
+            {
+                // Skip if workflow or steps are null
+                if (er.Workflow == null || er.Workflow.WorkflowSteps == null)
                 {
-                    var currentStep = er.Workflow.WorkflowSteps
-                        .FirstOrDefault(ws => ws != null && ws.StepOrder == er.CurrentStepOrder);
-                    
-                    if (currentStep == null)
-                    {
-                        _logger.LogDebug($"Request {er.Id}: No step found for CurrentStepOrder {er.CurrentStepOrder}");
-                        return false;
-                    }
+                    _logger.LogDebug($"Request {er.Id}: Skipping - Workflow or WorkflowSteps is null");
+                    continue;
+                }
 
-                    // Check if step requires doctor approval
-                    if (currentStep.ApproverType == ApproverType.Doctor)
-                    {
-                        // Doctors should only see sick leave requests
-                        bool canSee = canApproveAsDoctor && er.Type == ExceptionRequestType.Sick;
-                        _logger.LogDebug($"Request {er.Id}: Doctor step check - canApproveAsDoctor={canApproveAsDoctor}, Type={er.Type}, canSee={canSee}");
-                        return canSee;
-                    }
+                // Find the step that the request is currently at
+                var currentStep = er.Workflow.WorkflowSteps
+                    .FirstOrDefault(ws => ws != null && ws.StepOrder == er.CurrentStepOrder);
+                
+                if (currentStep == null)
+                {
+                    _logger.LogDebug($"Request {er.Id}: No step found for CurrentStepOrder {er.CurrentStepOrder}");
+                    continue;
+                }
 
-                    // For Manager/HR, check if current employee is assigned
-                    if (currentEmployee != null && 
-                        currentStep.ApproverEmployeeId.HasValue &&
-                        currentStep.ApproverEmployeeId.Value == currentEmployee.Id)
-                    {
-                        return true;
-                    }
+                _logger.LogDebug($"Request {er.Id}: CurrentStepOrder={er.CurrentStepOrder}, StepApproverType={currentStep.ApproverType}, StepApproverEmployeeId={currentStep.ApproverEmployeeId}");
 
-                    return false;
-                })
-                .ToList();
+                // Check if step requires doctor approval
+                if (currentStep.ApproverType == ApproverType.Doctor)
+                {
+                    // Doctors should only see sick leave requests at doctor steps
+                    if (canApproveAsDoctor && er.Type == ExceptionRequestType.Sick)
+                    {
+                        _logger.LogDebug($"Request {er.Id}: Doctor step - INCLUDED");
+                        myPendingRequests.Add(er);
+                    }
+                    else
+                    {
+                        _logger.LogDebug($"Request {er.Id}: Doctor step - EXCLUDED (canApproveAsDoctor={canApproveAsDoctor}, Type={er.Type})");
+                    }
+                    continue;
+                }
+
+                // For Manager/HR, ensure:
+                // 1. The request is at the exact step where this employee is assigned
+                // 2. The current employee matches the approver for this specific step
+                if (currentEmployee == null)
+                {
+                    _logger.LogDebug($"Request {er.Id}: EXCLUDED - CurrentEmployee is null");
+                    continue;
+                }
+
+                // CRITICAL: Only include if the current step's approver matches the current employee
+                // AND the request is at this exact step (already verified by finding currentStep)
+                if (!currentStep.ApproverEmployeeId.HasValue)
+                {
+                    _logger.LogDebug($"Request {er.Id}: EXCLUDED - Step {currentStep.StepOrder} has no ApproverEmployeeId");
+                    continue;
+                }
+
+                if (currentStep.ApproverEmployeeId.Value != currentEmployee.Id)
+                {
+                    _logger.LogDebug($"Request {er.Id}: EXCLUDED - Step {currentStep.StepOrder} ApproverEmployeeId ({currentStep.ApproverEmployeeId.Value}) != CurrentEmployeeId ({currentEmployee.Id})");
+                    continue;
+                }
+
+                // Double-check: Ensure the request is at this exact step
+                if (er.CurrentStepOrder != currentStep.StepOrder)
+                {
+                    _logger.LogDebug($"Request {er.Id}: EXCLUDED - CurrentStepOrder ({er.CurrentStepOrder}) != StepOrder ({currentStep.StepOrder})");
+                    continue;
+                }
+
+                // All checks passed - this request is at the exact step where this manager is assigned
+                _logger.LogDebug($"Request {er.Id}: INCLUDED - Manager/HR match at step {currentStep.StepOrder}");
+                myPendingRequests.Add(er);
+            }
 
             _logger.LogDebug($"User {_currentUser.Id} can see {myPendingRequests.Count} pending requests");
 
