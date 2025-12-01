@@ -15,6 +15,7 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Guids;
+using Volo.Abp;
 
 namespace AttendanceManagement.Services
 {
@@ -79,6 +80,13 @@ namespace AttendanceManagement.Services
 
         public override async Task<GroupDto> CreateAsync(CreateUpdateGroupDto input)
         {
+            // Validate name uniqueness
+            var existingGroup = await Repository.FirstOrDefaultAsync(g => g.Name == input.Name);
+            if (existingGroup != null)
+            {
+                throw new UserFriendlyException("A group with this name already exists.");
+            }
+
             var group = new Group(
                 GuidGenerator.Create(),
                 input.Name,
@@ -86,6 +94,24 @@ namespace AttendanceManagement.Services
             );
 
             await Repository.InsertAsync(group);
+            return ObjectMapper.Map<Group, GroupDto>(group);
+        }
+
+        public override async Task<GroupDto> UpdateAsync(Guid id, CreateUpdateGroupDto input)
+        {
+            var group = await Repository.GetAsync(id);
+
+            // Validate name uniqueness (excluding current group)
+            var existingGroup = await Repository.FirstOrDefaultAsync(g => g.Name == input.Name && g.Id != id);
+            if (existingGroup != null)
+            {
+                throw new UserFriendlyException("A group with this name already exists.");
+            }
+
+            group.Name = input.Name;
+            group.Description = input.Description;
+
+            await Repository.UpdateAsync(group);
             return ObjectMapper.Map<Group, GroupDto>(group);
         }
     }

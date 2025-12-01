@@ -95,7 +95,51 @@ namespace AttendanceManagement.Services
         {
             await CheckPolicyAsync(AttendanceManagementPermissions.Schedules.Assign);
 
+            // Validate ScheduleId exists
             var schedule = await Repository.GetAsync(input.ScheduleId);
+
+            // Validate at least EmployeeId or GroupId is provided
+            if (!input.EmployeeId.HasValue && !input.GroupId.HasValue)
+            {
+                throw new UserFriendlyException("Either Employee or Group must be specified.");
+            }
+
+            // Validate EmployeeId if provided
+            if (input.EmployeeId.HasValue)
+            {
+                var employeeExists = await _employeeRepository.AnyAsync(e => e.Id == input.EmployeeId.Value);
+                if (!employeeExists)
+                {
+                    throw new UserFriendlyException("The specified employee does not exist.");
+                }
+            }
+
+            // Validate GroupId if provided
+            if (input.GroupId.HasValue)
+            {
+                var groupExists = await _groupRepository.AnyAsync(g => g.Id == input.GroupId.Value);
+                if (!groupExists)
+                {
+                    throw new UserFriendlyException("The specified group does not exist.");
+                }
+            }
+
+            // Validate date range
+            if (input.EffectiveTo.HasValue && input.EffectiveTo.Value <= input.EffectiveFrom)
+            {
+                throw new UserFriendlyException("Effective to date must be after effective from date.");
+            }
+
+            // If assigning to an employee, ensure only one active assignment per employee
+            if (input.EmployeeId.HasValue)
+            {
+                var existingActiveAssignment = await GetEmployeeCurrentScheduleAssignmentEntityAsync(input.EmployeeId.Value);
+                if (existingActiveAssignment != null)
+                {
+                    existingActiveAssignment.EffectiveTo = input.EffectiveFrom.AddDays(-1);
+                    await _scheduleRepository.UpdateAsync(existingActiveAssignment);
+                }
+            }
 
             var assignment = new ScheduleAssignment(
                 GuidGenerator.Create(),
@@ -129,6 +173,17 @@ namespace AttendanceManagement.Services
             await Repository.UpdateAsync(schedule);
         }
 
+        private async Task<ScheduleAssignment> GetEmployeeCurrentScheduleAssignmentEntityAsync(Guid employeeId)
+        {
+            var queryable = await _scheduleRepository.GetQueryableAsync();
+            return await queryable
+                .Where(sa => sa.EmployeeId == employeeId 
+                    && sa.EffectiveFrom <= DateTime.Now 
+                    && (sa.EffectiveTo == null || sa.EffectiveTo >= DateTime.Now))
+                .OrderByDescending(sa => sa.EffectiveFrom)
+                .FirstOrDefaultAsync();
+        }
+
         public async Task<ScheduleAssignmentDto> GetEmployeeCurrentScheduleAsync(Guid employeeId)
         {
             _logger.LogDebug("Request for Employee ID" + employeeId + " Schedule");
@@ -145,7 +200,7 @@ namespace AttendanceManagement.Services
                 _logger.LogDebug("Employee " + employeeId+ " NOT Found");
             }
 
-            var currentAssignment = await _scheduleRepository.GetScheduleAssignmentByEmployeeId(employeeId);    
+            var currentAssignment = await GetEmployeeCurrentScheduleAssignmentEntityAsync(employeeId);    
 
             if (currentAssignment == null)
             {
@@ -170,6 +225,115 @@ namespace AttendanceManagement.Services
             };
         }
 
+        public async Task<List<ScheduleAssignmentDto>> GetEmployeeScheduleAssignmentsAsync(Guid employeeId)
+        {
+            var queryable = await _scheduleRepository.GetQueryableAsync();
+            var assignments = await queryable
+                .Where(sa => sa.EmployeeId == employeeId)
+                .OrderByDescending(sa => sa.EffectiveFrom)
+                .Include(sa => sa.Schedule)
+                .Include(sa => sa.Employee)
+                .ToListAsync();
+
+            return assignments.Select(a => new ScheduleAssignmentDto
+            {
+                Id = a.Id,
+                ScheduleId = a.ScheduleId,
+                ScheduleName = a.Schedule?.Name ?? "-",
+                EmployeeId = a.EmployeeId,
+                EmployeeName = a.Employee?.Name ?? "-",
+                GroupId = a.GroupId,
+                EffectiveFrom = a.EffectiveFrom,
+                EffectiveTo = a.EffectiveTo,
+                SeatNumber = a.SeatNumber ?? "-",
+                FloorNumber = a.FloorNumber ?? "-"
+            }).ToList();
+        }
+
+        public async Task UpdateScheduleAssignmentAsync(Guid assignmentId, AssignScheduleDto input)
+        {
+            await CheckPolicyAsync(AttendanceManagementPermissions.Schedules.Assign);
+
+            var assignment = await _scheduleRepository.GetAsync(assignmentId);
+
+            // Validate ScheduleId exists
+            var scheduleExists = await Repository.AnyAsync(s => s.Id == input.ScheduleId);
+            if (!scheduleExists)
+            {
+                throw new UserFriendlyException("The specified schedule does not exist.");
+            }
+
+            // Validate EmployeeId if provided
+            if (input.EmployeeId.HasValue)
+            {
+                var employeeExists = await _employeeRepository.AnyAsync(e => e.Id == input.EmployeeId.Value);
+                if (!employeeExists)
+                {
+                    throw new UserFriendlyException("The specified employee does not exist.");
+                }
+            }
+
+            // Validate GroupId if provided
+            if (input.GroupId.HasValue)
+            {
+                var groupExists = await _groupRepository.AnyAsync(g => g.Id == input.GroupId.Value);
+                if (!groupExists)
+                {
+                    throw new UserFriendlyException("The specified group does not exist.");
+                }
+            }
+
+            // Validate date range
+            if (input.EffectiveTo.HasValue && input.EffectiveTo.Value <= input.EffectiveFrom)
+            {
+                throw new UserFriendlyException("Effective to date must be after effective from date.");
+            }
+            
+            // If schedule changed, we need to update the schedule's assignments
+            if (assignment.ScheduleId != input.ScheduleId)
+            {
+                var oldSchedule = await Repository.GetAsync(assignment.ScheduleId);
+                var newSchedule = await Repository.GetAsync(input.ScheduleId);
+                
+                // Remove from old schedule
+                oldSchedule.ScheduleAssignments.Remove(assignment);
+                await Repository.UpdateAsync(oldSchedule);
+                
+                // Add to new schedule
+                assignment.ScheduleId = input.ScheduleId;
+                newSchedule.ScheduleAssignments.Add(assignment);
+                await Repository.UpdateAsync(newSchedule);
+            }
+
+            // If assigning to an employee and effective from date changed, end any overlapping active assignment
+            if (input.EmployeeId.HasValue && assignment.EffectiveFrom != input.EffectiveFrom && assignment.EffectiveTo == null)
+            {
+                var existingActive = await GetEmployeeCurrentScheduleAssignmentEntityAsync(input.EmployeeId.Value);
+                if (existingActive != null && existingActive.Id != assignmentId)
+                {
+                    existingActive.EffectiveTo = input.EffectiveFrom.AddDays(-1);
+                    await _scheduleRepository.UpdateAsync(existingActive);
+                }
+            }
+
+            // Update assignment properties
+            assignment.EffectiveFrom = input.EffectiveFrom;
+            assignment.EffectiveTo = input.EffectiveTo;
+            assignment.SeatNumber = input.SeatNumber;
+            assignment.FloorNumber = input.FloorNumber;
+
+            await _scheduleRepository.UpdateAsync(assignment);
+        }
+
+        public async Task EndScheduleAssignmentAsync(Guid assignmentId, DateTime endDate)
+        {
+            await CheckPolicyAsync(AttendanceManagementPermissions.Schedules.Assign);
+
+            var assignment = await _scheduleRepository.GetAsync(assignmentId);
+            assignment.EffectiveTo = endDate;
+            await _scheduleRepository.UpdateAsync(assignment);
+        }
+
         // TODO: Implement export functionality
         public async Task<byte[]> ExportEmployeeScheduleAsync(Guid employeeId)
         {
@@ -178,6 +342,18 @@ namespace AttendanceManagement.Services
 
         public override async Task<ScheduleDto> CreateAsync(CreateUpdateScheduleDto input)
         {
+            // Validate schedule days have unique DayOfWeek values
+            var duplicateDays = input.ScheduleDays
+                .GroupBy(d => d.DayOfWeek)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicateDays.Any())
+            {
+                throw new UserFriendlyException($"Duplicate days of week found: {string.Join(", ", duplicateDays)}");
+            }
+
             var schedule = new Schedule(
                 GuidGenerator.Create(),
                 input.Name,
@@ -203,6 +379,18 @@ namespace AttendanceManagement.Services
         {
             var queryable = await Repository.WithDetailsAsync(s => s.ScheduleDays);
             var schedule = await queryable.FirstOrDefaultAsync(s => s.Id == id);
+
+            // Validate schedule days have unique DayOfWeek values
+            var duplicateDays = input.ScheduleDays
+                .GroupBy(d => d.DayOfWeek)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicateDays.Any())
+            {
+                throw new UserFriendlyException($"Duplicate days of week found: {string.Join(", ", duplicateDays)}");
+            }
 
             schedule.Name = input.Name;
             schedule.Description = input.Description;

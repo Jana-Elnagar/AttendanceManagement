@@ -108,6 +108,35 @@ namespace AttendanceManagement.Services
 
         public override async Task<WorkflowDto> CreateAsync(CreateUpdateWorkflowDto input)
         {
+            // Validate workflow steps have unique step orders
+            var duplicateStepOrders = input.WorkflowSteps
+                .GroupBy(s => s.StepOrder)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicateStepOrders.Any())
+            {
+                throw new UserFriendlyException($"Duplicate step orders found: {string.Join(", ", duplicateStepOrders)}");
+            }
+
+            // Validate approver employee exists for non-Doctor steps
+            foreach (var stepDto in input.WorkflowSteps)
+            {
+                if (stepDto.ApproverType != Enums.ApproverType.Doctor && stepDto.ApproverEmployeeId.HasValue)
+                {
+                    var employeeExists = await _employeeRepository.AnyAsync(e => e.Id == stepDto.ApproverEmployeeId.Value);
+                    if (!employeeExists)
+                    {
+                        throw new UserFriendlyException($"Approver employee with ID {stepDto.ApproverEmployeeId.Value} does not exist for step {stepDto.StepOrder}.");
+                    }
+                }
+                else if (stepDto.ApproverType != Enums.ApproverType.Doctor && !stepDto.ApproverEmployeeId.HasValue)
+                {
+                    throw new UserFriendlyException($"Approver employee is required for step {stepDto.StepOrder} (ApproverType: {stepDto.ApproverType}).");
+                }
+            }
+
             var workflow = new Workflow(
                 GuidGenerator.Create(),
                 input.Name,
@@ -137,7 +166,36 @@ namespace AttendanceManagement.Services
             
             if (workflow == null)
             {
-                throw new UserFriendlyException("Workflow not found");                      // TODO: Use proper exception handling
+                throw new UserFriendlyException("Workflow not found");
+            }
+
+            // Validate workflow steps have unique step orders
+            var duplicateStepOrders = input.WorkflowSteps
+                .GroupBy(s => s.StepOrder)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicateStepOrders.Any())
+            {
+                throw new UserFriendlyException($"Duplicate step orders found: {string.Join(", ", duplicateStepOrders)}");
+            }
+
+            // Validate approver employee exists for non-Doctor steps
+            foreach (var stepDto in input.WorkflowSteps)
+            {
+                if (stepDto.ApproverType != Enums.ApproverType.Doctor && stepDto.ApproverEmployeeId.HasValue)
+                {
+                    var employeeExists = await _employeeRepository.AnyAsync(e => e.Id == stepDto.ApproverEmployeeId.Value);
+                    if (!employeeExists)
+                    {
+                        throw new UserFriendlyException($"Approver employee with ID {stepDto.ApproverEmployeeId.Value} does not exist for step {stepDto.StepOrder}.");
+                    }
+                }
+                else if (stepDto.ApproverType != Enums.ApproverType.Doctor && !stepDto.ApproverEmployeeId.HasValue)
+                {
+                    throw new UserFriendlyException($"Approver employee is required for step {stepDto.StepOrder} (ApproverType: {stepDto.ApproverType}).");
+                }
             }
 
             workflow.Name = input.Name;

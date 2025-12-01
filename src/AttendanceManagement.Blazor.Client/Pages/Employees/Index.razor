@@ -1,6 +1,7 @@
 ﻿@page "/employees"
 @using AttendanceManagement.Interfaces
 @using AttendanceManagement.Permissions
+@using AttendanceManagement.Dtos.Schedules
 @using Volo.Abp.Application.Dtos
 @using Volo.Abp.AspNetCore.Components.Messages
 @using Microsoft.AspNetCore.Authorization
@@ -8,6 +9,7 @@
 @inject IEmployeeAppService EmployeeAppService
 @inject IGroupAppService GroupAppService
 @inject IWorkflowAppService WorkflowAppService
+@inject IScheduleAppService ScheduleAppService
 @inject IUiMessageService MessageService
 @inject IAuthorizationService AuthorizationService
 @inject IStringLocalizer<AttendanceManagementResource> L
@@ -107,50 +109,7 @@
                     }
                 </TableBody>
             </Table>
-
-            @* Simple Pagination *@
-        @*     @if (TotalPages > 1)
-            {
-                <Row Class="mt-3">
-                    <Column>
-                        <Pagination>
-                            <PaginationItem Disabled="@(CurrentPage == 1)">
-                                <PaginationLink Clicked="@(() => LoadPageAsync(CurrentPage - 1))">
-                                    <Icon Name="IconName.ChevronLeft" />
-                                </PaginationLink>
-                            </PaginationItem>
-
-                            @for (int i = 1; i <= TotalPages; i++)
-                            {
-                                var page = i;
-                                <PaginationItem Active="@(CurrentPage == page)">
-                                    <PaginationLink Clicked="@(() => LoadPageAsync(page))">
-                                        @page
-                                    </PaginationLink>
-                                </PaginationItem>
-                            }
-
-                            <PaginationItem Disabled="@(CurrentPage == TotalPages)">
-                                <PaginationLink Clicked="@(() => LoadPageAsync(CurrentPage + 1))">
-                                    <Icon Name="IconName.ChevronRight" />
-                                </PaginationLink>
-                            </PaginationItem>
-                        </Pagination>
-                    </Column>
-                    <Column ColumnSize="ColumnSize.IsAuto">
-                        <span>Page @CurrentPage of @TotalPages (@TotalCount total)</span>
-                    </Column>
-                </Row>
-            }
-        }
-        else
-        {
-            <Alert Color="Color.Info" Visible="true">
-                <AlertDescription>
-                    @L["NoRecordsFound"]
-                </AlertDescription>
-            </Alert>
-        } *@
+        
         }
     </CardBody>
 </Card>
@@ -261,11 +220,126 @@
                         }
                     </FieldBody>
                 </Field>
+                <Divider Margin="Margin.Is4.FromTop" />
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5>@L["ScheduleAssignments"]</h5>
+                    @* @if (HasScheduleAssignPermission)
+                    {
+                        <Button Color="Color.Primary" Size="Size.Small" Clicked="@(() => OpenAssignScheduleModal(SelectedEmployeeDetails.Id))">
+                            <Icon Name="IconName.Add" /> @L["AssignSchedule"]
+                        </Button>
+                    } *@
+                </div>
+                @if (ScheduleAssignments != null && ScheduleAssignments.Any())
+                {
+                    <Table Striped="true" Hoverable="true" Responsive="true">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>@L["Schedule"]</TableHeaderCell>
+                                <TableHeaderCell>@L["EffectiveFrom"]</TableHeaderCell>
+                                <TableHeaderCell>@L["EffectiveTo"]</TableHeaderCell>
+                                <TableHeaderCell>@L["SeatNumber"]</TableHeaderCell>
+                                <TableHeaderCell>@L["FloorNumber"]</TableHeaderCell>
+                                <TableHeaderCell>@L["Actions"]</TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var assignment in ScheduleAssignments)
+                            {
+                                <TableRow>
+                                    <TableRowCell>@assignment.ScheduleName</TableRowCell>
+                                    <TableRowCell>@assignment.EffectiveFrom.ToString("yyyy-MM-dd")</TableRowCell>
+                                    <TableRowCell>@(assignment.EffectiveTo?.ToString("yyyy-MM-dd") ?? L["Ongoing"])</TableRowCell>
+                                    <TableRowCell>@assignment.SeatNumber</TableRowCell>
+                                    <TableRowCell>@assignment.FloorNumber</TableRowCell>
+                                    <TableRowCell>
+                                        @if (HasScheduleAssignPermission)
+                                        {
+                                            <Dropdown>
+                                                <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                                    @L["Actions"]
+                                                </DropdownToggle>
+                                                <DropdownMenu>
+                                                    <DropdownItem Clicked="@(() => OpenEditScheduleModal(assignment))">
+                                                        <Icon Name="IconName.Edit" /> @L["Edit"]
+                                                    </DropdownItem>
+                                                    @if (assignment.EffectiveTo == null)
+                                                    {
+                                                        <DropdownItem Clicked="@(() => EndScheduleAssignmentAsync(assignment.Id))">
+                                                            <Icon Name="IconName.Stop" /> @L["EndAssignment"]
+                                                        </DropdownItem>
+                                                    }
+                                                </DropdownMenu>
+                                            </Dropdown>
+                                        }
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                }
+                else
+                {
+                    <Alert Color="Color.Info">
+                        <AlertDescription>@L["NoScheduleAssignments"]</AlertDescription>
+                    </Alert>
+                }
             }
         </ModalBody>
         <ModalFooter>
             <Button Color="Color.Secondary" Clicked="CloseDetailsModal">@L["Close"]</Button>
         </ModalFooter>
+    </ModalContent>
+</Modal>
+
+<Modal @ref="ScheduleAssignmentModal">
+    <ModalContent Centered="true" Size="ModalSize.Large">
+        <Form>
+            <ModalHeader>
+                <ModalTitle>@ScheduleAssignmentModalTitle</ModalTitle>
+                <CloseButton Clicked="CloseScheduleAssignmentModal" />
+            </ModalHeader>
+            <ModalBody>
+                @if (EditingScheduleAssignment != null)
+                {
+                    <Field>
+                        <FieldLabel>@L["Schedule"] *</FieldLabel>
+                        <Select TValue="Guid" @bind-SelectedValue="@EditingScheduleAssignment.ScheduleId">
+                            <SelectItem Value="@Guid.Empty">-- @L["Select"] --</SelectItem>
+                            @if (Schedules != null)
+                            {
+                                @foreach (var schedule in Schedules)
+                                {
+                                    <SelectItem Value="@schedule.Id">@schedule.Name</SelectItem>
+                                }
+                            }
+                        </Select>
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["EffectiveFrom"] *</FieldLabel>
+                        <TextEdit Type="date" @bind-Text="@EffectiveFromString" />
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["EffectiveTo"]</FieldLabel>
+                        <TextEdit Type="date" @bind-Text="@EffectiveToString" />
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["SeatNumber"]</FieldLabel>
+                        <TextEdit @bind-Text="@EditingScheduleAssignment.SeatNumber" Placeholder="Enter seat number" />
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["FloorNumber"]</FieldLabel>
+                        <TextEdit @bind-Text="@EditingScheduleAssignment.FloorNumber" Placeholder="Enter floor number" />
+                    </Field>
+                }
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="CloseScheduleAssignmentModal">@L["Cancel"]</Button>
+                <Button Color="Color.Primary" Clicked="SaveScheduleAssignmentAsync" Loading="@IsSavingSchedule">
+                    @L["Save"]
+                </Button>
+            </ModalFooter>
+        </Form>
     </ModalContent>
 </Modal>
 
@@ -280,6 +354,7 @@
 
     private Modal EmployeeModal { get; set; }
     private Modal DetailsModal { get; set; }
+    private Modal ScheduleAssignmentModal { get; set; }
 
     private CreateUpdateEmployeeDto EditingEmployee { get; set; }
     private Guid? EditingEmployeeId { get; set; }
@@ -288,9 +363,20 @@
 
     private List<GroupDto> Groups { get; set; }
     private List<WorkflowDto> Workflows { get; set; }
+    private List<ScheduleDto> Schedules { get; set; }
+    private List<ScheduleAssignmentDto> ScheduleAssignments { get; set; }
+
+    private AssignScheduleDto EditingScheduleAssignment { get; set; }
+    private Guid? EditingScheduleAssignmentId { get; set; }
+    private Guid? AssigningEmployeeId { get; set; }
+    private string ScheduleAssignmentModalTitle { get; set; }
+    private string EffectiveFromString { get; set; }
+    private string EffectiveToString { get; set; }
+    private bool IsSavingSchedule { get; set; }
 
     private bool HasCreatePermission { get; set; }
     private bool HasUpdatePermission { get; set; }
+    private bool HasScheduleAssignPermission { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -299,6 +385,7 @@
             await SetPermissionsAsync();
             await LoadGroupsAsync();
             await LoadWorkflowsAsync();
+            await LoadSchedulesAsync();
             await LoadEmployeesAsync();
         }
         catch (Exception ex)
@@ -315,6 +402,7 @@
     {
         HasCreatePermission = await AuthorizationService.IsGrantedAsync(AttendanceManagementPermissions.Employees.Create);
         HasUpdatePermission = await AuthorizationService.IsGrantedAsync(AttendanceManagementPermissions.Employees.Edit);
+        HasScheduleAssignPermission = await AuthorizationService.IsGrantedAsync(AttendanceManagementPermissions.Schedules.Assign);
     }
 
     private async Task LoadEmployeesAsync()
@@ -372,6 +460,19 @@
         }
     }
 
+    private async Task LoadSchedulesAsync()
+    {
+        try
+        {
+            Schedules = await ScheduleAppService.GetActiveSchedulesAsync();
+        }
+        catch (Exception ex)
+        {
+            Schedules = new List<ScheduleDto>();
+            await MessageService.Error($"Error loading schedules: {ex.Message}");
+        }
+    }
+
     private async Task OpenCreateModalAsync()
     {
         try
@@ -418,12 +519,162 @@
         try
         {
             SelectedEmployeeDetails = await EmployeeAppService.GetWithDetailsAsync(id);
+            ScheduleAssignments = await ScheduleAppService.GetEmployeeScheduleAssignmentsAsync(id);
             await DetailsModal.Show();
             StateHasChanged();
         }
         catch (Exception ex)
         {
             await MessageService.Error($"Error loading details: {ex.Message}");
+        }
+    }
+
+    private async Task OpenAssignScheduleModal(Guid employeeId)
+    {
+        try
+        {
+            if (Schedules == null || !Schedules.Any())
+            {
+                await LoadSchedulesAsync();
+            }
+
+            AssigningEmployeeId = employeeId;
+            EditingScheduleAssignmentId = null;
+            EditingScheduleAssignment = new AssignScheduleDto
+            {
+                EmployeeId = employeeId,
+                EffectiveFrom = DateTime.Today
+            };
+            EffectiveFromString = DateTime.Today.ToString("yyyy-MM-dd");
+            EffectiveToString = string.Empty;
+            ScheduleAssignmentModalTitle = L["AssignSchedule"];
+            await ScheduleAssignmentModal.Show();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error opening assign schedule modal: {ex.Message}");
+        }
+    }
+
+    private async Task OpenEditScheduleModal(ScheduleAssignmentDto assignment)
+    {
+        try
+        {
+            if (Schedules == null || !Schedules.Any())
+            {
+                await LoadSchedulesAsync();
+            }
+
+            EditingScheduleAssignmentId = assignment.Id;
+            AssigningEmployeeId = assignment.EmployeeId;
+            EditingScheduleAssignment = new AssignScheduleDto
+            {
+                ScheduleId = assignment.ScheduleId,
+                EmployeeId = assignment.EmployeeId,
+                EffectiveFrom = assignment.EffectiveFrom,
+                EffectiveTo = assignment.EffectiveTo,
+                SeatNumber = assignment.SeatNumber,
+                FloorNumber = assignment.FloorNumber
+            };
+            EffectiveFromString = assignment.EffectiveFrom.ToString("yyyy-MM-dd");
+            EffectiveToString = assignment.EffectiveTo?.ToString("yyyy-MM-dd") ?? string.Empty;
+            ScheduleAssignmentModalTitle = L["EditScheduleAssignment"];
+            await ScheduleAssignmentModal.Show();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error opening edit schedule modal: {ex.Message}");
+        }
+    }
+
+    private async Task CloseScheduleAssignmentModal()
+    {
+        await ScheduleAssignmentModal.Hide();
+        EditingScheduleAssignment = null;
+        EditingScheduleAssignmentId = null;
+        AssigningEmployeeId = null;
+        StateHasChanged();
+    }
+
+    private async Task SaveScheduleAssignmentAsync()
+    {
+        try
+        {
+            if (EditingScheduleAssignment == null)
+            {
+                await MessageService.Error("Schedule assignment data is missing.");
+                return;
+            }
+
+            if (EditingScheduleAssignment.ScheduleId == Guid.Empty)
+            {
+                await MessageService.Error("Please select a schedule.");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(EffectiveFromString) || !DateTime.TryParse(EffectiveFromString, out var effectiveFrom))
+            {
+                await MessageService.Error("Please enter a valid effective from date.");
+                return;
+            }
+
+            EditingScheduleAssignment.EffectiveFrom = effectiveFrom;
+            EditingScheduleAssignment.EffectiveTo = !string.IsNullOrEmpty(EffectiveToString) && DateTime.TryParse(EffectiveToString, out var effectiveTo) ? effectiveTo : null;
+
+            IsSavingSchedule = true;
+
+            if (EditingScheduleAssignmentId == null)
+            {
+                await ScheduleAppService.AssignScheduleAsync(EditingScheduleAssignment);
+                await MessageService.Success(L["ScheduleAssignedSuccessfully"]);
+            }
+            else
+            {
+                await ScheduleAppService.UpdateScheduleAssignmentAsync(EditingScheduleAssignmentId.Value, EditingScheduleAssignment);
+                await MessageService.Success(L["ScheduleAssignmentUpdatedSuccessfully"]);
+            }
+
+            await CloseScheduleAssignmentModal();
+            if (SelectedEmployeeDetails != null && AssigningEmployeeId.HasValue)
+            {
+                ScheduleAssignments = await ScheduleAppService.GetEmployeeScheduleAssignmentsAsync(AssigningEmployeeId.Value);
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error saving schedule assignment: {ex.Message}");
+        }
+        finally
+        {
+            IsSavingSchedule = false;
+        }
+    }
+
+    private async Task EndScheduleAssignmentAsync(Guid assignmentId)
+    {
+        try
+        {
+            var confirmed = await MessageService.Confirm(L["EndScheduleAssignmentConfirmation"], L["Confirm"]);
+            if (!confirmed)
+            {
+                return;
+            }
+
+            await ScheduleAppService.EndScheduleAssignmentAsync(assignmentId, DateTime.Today);
+            await MessageService.Success(L["ScheduleAssignmentEndedSuccessfully"]);
+
+            if (SelectedEmployeeDetails != null)
+            {
+                ScheduleAssignments = await ScheduleAppService.GetEmployeeScheduleAssignmentsAsync(SelectedEmployeeDetails.Id);
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await MessageService.Error($"Error ending schedule assignment: {ex.Message}");
         }
     }
 

@@ -17,6 +17,9 @@ namespace AttendanceManagement.Interfaces
         Task DeactivateAsync(Guid id);
         Task AssignScheduleAsync(AssignScheduleDto input);
         Task<ScheduleAssignmentDto> GetEmployeeCurrentScheduleAsync(Guid employeeId);
+        Task<List<ScheduleAssignmentDto>> GetEmployeeScheduleAssignmentsAsync(Guid employeeId);
+        Task UpdateScheduleAssignmentAsync(Guid assignmentId, AssignScheduleDto input);
+        Task EndScheduleAssignmentAsync(Guid assignmentId, DateTime endDate);
         Task<byte[]> ExportEmployeeScheduleAsync(Guid employeeId);
     }
 }

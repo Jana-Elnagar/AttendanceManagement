@@ -152,6 +152,18 @@
     "ExternalUserMessage": "تم تسجيل الدخول كمستخدم خارجي. معلومات الموظف غير متاحة.",
     "EmployeeRecordNotFound": "لم يتم العثور على سجل الموظف.",
     "UserInfo": "معلومات المستخدم",
-    "NotRequired": "غير مطلوب"
+    "NotRequired": "غير مطلوب",
+    "ScheduleAssignments": "تعيينات الجدول",
+    "AssignSchedule": "تعيين جدول",
+    "EditScheduleAssignment": "تعديل تعيين الجدول",
+    "NoScheduleAssignments": "لم يتم العثور على تعيينات جدول.",
+    "EffectiveFrom": "ساري من",
+    "EffectiveTo": "ساري حتى",
+    "Ongoing": "مستمر",
+    "EndAssignment": "إنهاء التعيين",
+    "ScheduleAssignedSuccessfully": "تم تعيين الجدول بنجاح.",
+    "ScheduleAssignmentUpdatedSuccessfully": "تم تحديث تعيين الجدول بنجاح.",
+    "ScheduleAssignmentEndedSuccessfully": "تم إنهاء تعيين الجدول بنجاح.",
+    "EndScheduleAssignmentConfirmation": "هل أنت متأكد من إنهاء تعيين الجدول هذا؟"
   }
 }

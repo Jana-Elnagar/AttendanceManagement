@@ -152,6 +152,18 @@
     "ExternalUserMessage": "External User. Employee-specific Information is Unavailable.",
     "EmployeeRecordNotFound": "Employee record not found.",
     "UserInfo": "User Information",
-    "NotRequired": "Not Required"
+    "NotRequired": "Not Required",
+    "ScheduleAssignments": "Schedule Assignments",
+    "AssignSchedule": "Assign Schedule",
+    "EditScheduleAssignment": "Edit Schedule Assignment",
+    "NoScheduleAssignments": "No schedule assignments found.",
+    "EffectiveFrom": "Effective From",
+    "EffectiveTo": "Effective To",
+    "Ongoing": "Ongoing",
+    "EndAssignment": "End Assignment",
+    "ScheduleAssignedSuccessfully": "Schedule assigned successfully.",
+    "ScheduleAssignmentUpdatedSuccessfully": "Schedule assignment updated successfully.",
+    "ScheduleAssignmentEndedSuccessfully": "Schedule assignment ended successfully.",
+    "EndScheduleAssignmentConfirmation": "Are you sure you want to end this schedule assignment?"
   }
 }

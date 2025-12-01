@@ -6,6 +6,7 @@
 @using Volo.Abp.AspNetCore.Components.Messages
 @using Microsoft.AspNetCore.Authorization
 @inherits AttendanceManagementComponentBase
+@attribute [Authorize]
 @inject IEmployeeAppService EmployeeAppService
 @inject IScheduleAppService ScheduleAppService
 @inject IExceptionRequestAppService ExceptionRequestAppService

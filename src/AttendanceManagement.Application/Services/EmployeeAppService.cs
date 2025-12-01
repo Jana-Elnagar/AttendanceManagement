@@ -109,6 +109,11 @@ namespace AttendanceManagement.Services
             return dto;
         }
 
+        protected override async Task<IQueryable<Employee>> CreateFilteredQueryAsync(PagedAndSortedResultRequestDto input)
+        {
+            return await Repository.WithDetailsAsync(e => e.User, e => e.Group, e => e.Workflow);
+        }
+
         public async Task<List<EmployeeDto>> GetActiveEmployeesAsync()
         {
             var queryable = await Repository.WithDetailsAsync(e => e.User, e => e.Group, e => e.Workflow);
@@ -150,8 +155,17 @@ namespace AttendanceManagement.Services
         {
             await CheckUpdatePolicyAsync();
 
+            // Validate employee exists
             var employee = await Repository.GetAsync(input.EmployeeId);
+
+            // Validate manager exists
             var manager = await Repository.GetAsync(input.ManagerEmployeeId);
+
+            // Validate employee is not assigning themselves as manager
+            if (input.EmployeeId == input.ManagerEmployeeId)
+            {
+                throw new UserFriendlyException("An employee cannot be assigned as their own manager.");
+            }
 
             var assignment = new ManagerAssignment(
                 GuidGenerator.Create(),
@@ -192,6 +206,33 @@ namespace AttendanceManagement.Services
 
         public override async Task<EmployeeDto> CreateAsync(CreateUpdateEmployeeDto input)
         {
+            // Check if employee with this UserId already exists
+            var existingEmployee = await Repository.FirstOrDefaultAsync(e => e.UserId == input.UserId);
+            if (existingEmployee != null)
+            {
+                throw new UserFriendlyException("An employee with this user already exists.");
+            }
+
+            // Validate GroupId if provided
+            if (input.GroupId.HasValue)
+            {
+                var groupExists = await _groupRepository.AnyAsync(g => g.Id == input.GroupId.Value);
+                if (!groupExists)
+                {
+                    throw new UserFriendlyException("The specified group does not exist.");
+                }
+            }
+
+            // Validate WorkflowId if provided
+            if (input.WorkflowId.HasValue)
+            {
+                var workflowExists = await _workflow_repository.AnyAsync(w => w.Id == input.WorkflowId.Value);
+                if (!workflowExists)
+                {
+                    throw new UserFriendlyException("The specified workflow does not exist.");
+                }
+            }
+
             var employee = new Employee(
                 GuidGenerator.Create(),
                 input.UserId,
@@ -213,6 +254,33 @@ namespace AttendanceManagement.Services
         public override async Task<EmployeeDto> UpdateAsync(Guid id, CreateUpdateEmployeeDto input)
         {
             var employee = await Repository.GetAsync(id);
+
+            // Check if another employee with this UserId exists (excluding current employee)
+            var existingEmployee = await Repository.FirstOrDefaultAsync(e => e.UserId == input.UserId && e.Id != id);
+            if (existingEmployee != null)
+            {
+                throw new UserFriendlyException("Another employee with this user already exists.");
+            }
+
+            // Validate GroupId if provided
+            if (input.GroupId.HasValue)
+            {
+                var groupExists = await _groupRepository.AnyAsync(g => g.Id == input.GroupId.Value);
+                if (!groupExists)
+                {
+                    throw new UserFriendlyException("The specified group does not exist.");
+                }
+            }
+
+            // Validate WorkflowId if provided
+            if (input.WorkflowId.HasValue)
+            {
+                var workflowExists = await _workflow_repository.AnyAsync(w => w.Id == input.WorkflowId.Value);
+                if (!workflowExists)
+                {
+                    throw new UserFriendlyException("The specified workflow does not exist.");
+                }
+            }
 
             employee.Name = input.Name;
             employee.Department = input.Department;
