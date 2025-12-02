@@ -264,3 +264,6 @@ src/AttendanceManagement.Blazor/Logs/*
 
 # Use abp install-libs to restore.
 **/wwwroot/libs/*
+
+# Dont upload attachments
+src/AttendanceManagement.HttpApi.Host/wwwroot/attachments/*
