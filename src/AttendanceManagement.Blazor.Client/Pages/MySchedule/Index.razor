@@ -232,7 +232,11 @@
 
             if (currentEmployee == null)
             {
-                await MessageService.Info(L["EmployeeRecordNotFound"]);
+                // User doesn't have an employee record (likely admin)
+                // Set schedule to null and show appropriate message
+                CurrentSchedule = null;
+                CurrentEmployeeId = null;
+                ScheduleDays = new List<ScheduleDayDto>();
                 return;
             }
 
@@ -257,7 +261,13 @@
         {
             if (!CurrentEmployeeId.HasValue)
             {
-                await MessageService.Error(L["EmployeeRecordNotFound"]);
+                await MessageService.Error(L["EmployeeRecordNotFound"] ?? "Employee record not found. This feature is only available for employees.");
+                return;
+            }
+
+            if (CurrentSchedule == null)
+            {
+                await MessageService.Error(L["NoScheduleAssigned"] ?? "No schedule assigned.");
                 return;
             }
 

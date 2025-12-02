@@ -358,7 +358,8 @@ namespace AttendanceManagement.Services
             if (employee == null)
             {
                 _logger.LogDebug("employee with id: " + _currentUser.Id + "NOT Found");
-                throw new UserFriendlyException("Employee record not found for current user.");
+                // Return empty list instead of throwing exception - user may be admin without employee record
+                return new List<ExceptionRequestDto>();
             }
             else
             {
@@ -402,8 +403,16 @@ namespace AttendanceManagement.Services
             }
 
             // For non-admin users, filter by approver
+            // Note: Admin users without employee records will have canViewAll=true and return above
             var currentEmployee = await _employeeRepository
                 .FirstOrDefaultAsync(e => e.UserId == _currentUser.Id.Value);
+            
+            // If user doesn't have an employee record and doesn't have ViewAll, return empty list
+            if (currentEmployee == null)
+            {
+                _logger.LogWarning($"User {_currentUser.Id} does not have an employee record and cannot view pending approvals.");
+                return new List<ExceptionRequestDto>();
+            }
 
             // Check if user has doctor approval permission
             bool canApproveAsDoctor = false;
@@ -610,12 +619,18 @@ namespace AttendanceManagement.Services
             // Check if user has permission to view this attachment
             // User can view if they are the requester, or if they have approve permission
             var canView = false;
-            var employee = await _employeeRepository.GetAsync(request.EmployeeId);
-            if (_currentUser.Id.HasValue && employee.UserId == _currentUser.Id.Value)
+            
+            // Check if current user is the requester
+            if (_currentUser.Id.HasValue)
             {
-                canView = true;
+                var employee = await _employeeRepository.GetAsync(request.EmployeeId);
+                if (employee.UserId == _currentUser.Id.Value)
+                {
+                    canView = true;
+                }
             }
 
+            // If not the requester, check if user has approve permission (includes admins)
             if (!canView)
             {
                 canView = await AuthorizationService.IsGrantedAsync(AttendanceManagementPermissions.ExceptionRequests.Approve);
