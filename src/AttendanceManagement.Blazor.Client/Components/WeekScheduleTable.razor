@@ -26,7 +26,7 @@
                 <TableBody>
                     @foreach (var day in upcomingDaysList)
                     {
-                        var isToday = day.Date.Date == DateTime.Today;
+                        var isToday = day.Date.Date == DateTime.UtcNow.Date;
                         <TableRow Class="@(isToday ? "today-highlight" : "")">
                             <TableRowCell>
                                 <strong>@day.Date.ToString("yyyy-MM-dd")</strong>
@@ -115,7 +115,7 @@ else
         {
             // Show all days of the week in chronological order (for MySchedule page)
             // Start from today and show the rest of the week
-            var today = DateTime.Today;
+            var today = DateTime.UtcNow.Date;
             var todayDayOfWeek = today.DayOfWeek;
             
             // First, collect all schedule days with their dates
@@ -147,7 +147,7 @@ else
         else
         {
             // Show upcoming days (for home page)
-            var startDate = StartDate ?? DateTime.Today;
+            var startDate = StartDate ?? DateTime.UtcNow.Date;
             for (int i = 0; i < DaysToShow; i++)
             {
                 var date = startDate.AddDays(i);

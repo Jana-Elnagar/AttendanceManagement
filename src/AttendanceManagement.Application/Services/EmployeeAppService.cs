@@ -80,8 +80,8 @@ namespace AttendanceManagement.Services
 
             // Get current schedule
             var currentScheduleAssignment = emp.ScheduleAssignments
-                .Where(sa => sa.EffectiveFrom <= DateTime.Now
-                    && (sa.EffectiveTo == null || sa.EffectiveTo >= DateTime.Now))
+                .Where(sa => sa.EffectiveFrom <= DateTime.UtcNow
+                    && (sa.EffectiveTo == null || sa.EffectiveTo >= DateTime.UtcNow))
                 .FirstOrDefault();
 
             if (currentScheduleAssignment != null)
@@ -106,8 +106,8 @@ namespace AttendanceManagement.Services
             // Get primary manager
             var primaryManager = emp.ManagerAssignments
                 .Where(ma => ma.IsPrimaryManager
-                    && ma.EffectiveFrom <= DateTime.Now
-                    && (ma.EffectiveTo == null || ma.EffectiveTo >= DateTime.Now))
+                    && ma.EffectiveFrom <= DateTime.UtcNow
+                    && (ma.EffectiveTo == null || ma.EffectiveTo >= DateTime.UtcNow))
                 .FirstOrDefault();
 
             if (primaryManager != null)
@@ -197,8 +197,8 @@ namespace AttendanceManagement.Services
             var employee = await Repository.GetAsync(employeeId);
 
             var assignments = employee.ManagerAssignments
-                .Where(ma => ma.EffectiveFrom <= DateTime.Now
-                    && (ma.EffectiveTo == null || ma.EffectiveTo >= DateTime.Now))
+                .Where(ma => ma.EffectiveFrom <= DateTime.UtcNow
+                    && (ma.EffectiveTo == null || ma.EffectiveTo >= DateTime.UtcNow))
                 .ToList();
 
             var dtos = new List<ManagerAssignmentDto>();

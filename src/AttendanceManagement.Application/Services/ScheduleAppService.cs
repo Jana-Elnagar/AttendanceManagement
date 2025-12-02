@@ -180,8 +180,8 @@ namespace AttendanceManagement.Services
             var queryable = await _scheduleRepository.GetQueryableAsync();
             return await queryable
                 .Where(sa => sa.EmployeeId == employeeId 
-                    && sa.EffectiveFrom <= DateTime.Now 
-                    && (sa.EffectiveTo == null || sa.EffectiveTo >= DateTime.Now))
+                    && sa.EffectiveFrom <= DateTime.UtcNow 
+                    && (sa.EffectiveTo == null || sa.EffectiveTo >= DateTime.UtcNow))
                 .OrderByDescending(sa => sa.EffectiveFrom)
                 .FirstOrDefaultAsync();
         }
@@ -427,7 +427,7 @@ namespace AttendanceManagement.Services
                     }
 
                     // Highlight today
-                    if (day.DayOfWeek == DateTime.Now.DayOfWeek)
+                    if (day.DayOfWeek == DateTime.UtcNow.DayOfWeek)
                     {
                         worksheet.Range(row, 1, row, 4).Style.Border.OutsideBorder = XLBorderStyleValues.Thick;
                         worksheet.Range(row, 1, row, 4).Style.Border.OutsideBorderColor = XLColor.FromHtml("#FFC000");

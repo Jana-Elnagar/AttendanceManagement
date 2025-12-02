@@ -161,7 +161,7 @@
                         <Validation>
                             <Field>
                                 <FieldLabel>@L["ExceptionDate"] *</FieldLabel>
-                                <DateEdit TValue="DateTime" @bind-Date="@NewRequest.ExceptionDate" Min="DateTime.Today">
+                                <DateEdit TValue="DateTime" @bind-Date="@NewRequest.ExceptionDate" Min="DateTime.UtcNow.Date">
                                     <Feedback><ValidationError /></Feedback>
                                 </DateEdit>
                                 <FieldHelp>@L["OnlyScheduledOnsiteDays"]</FieldHelp>
@@ -443,7 +443,7 @@
         {
             NewRequest = new CreateExceptionRequestDto
             {
-                ExceptionDate = DateTime.Today,
+                ExceptionDate = DateTime.UtcNow.Date,
                 Type = ExceptionRequestType.SpecialCondition
             };
             SelectedFile = null;

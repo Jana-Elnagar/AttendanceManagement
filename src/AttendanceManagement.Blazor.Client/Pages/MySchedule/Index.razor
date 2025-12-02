@@ -212,7 +212,7 @@
             StateHasChanged();
 
             var fileBytes = await ScheduleAppService.ExportEmployeeScheduleAsync(CurrentEmployeeId.Value);
-            var fileName = $"MySchedule_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"MySchedule_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
             await JSRuntime.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(fileBytes));
 
             await MessageService.Success(L["SuccessfullyExported"]);

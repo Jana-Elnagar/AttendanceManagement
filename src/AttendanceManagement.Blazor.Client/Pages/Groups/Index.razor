@@ -550,7 +550,7 @@
             StateHasChanged();
 
             var fileBytes = await GroupAppService.ExportToExcelAsync();
-            var fileName = $"Groups_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"Groups_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
             await JSRuntime.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(fileBytes));
 
             await MessageService.Success(L["SuccessfullyExported"]);

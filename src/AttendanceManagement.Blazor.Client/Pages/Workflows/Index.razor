@@ -691,7 +691,7 @@
             StateHasChanged();
 
             var fileBytes = await WorkflowAppService.ExportToExcelAsync();
-            var fileName = $"Workflows_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"Workflows_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
             await JSRuntime.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(fileBytes));
 
             try

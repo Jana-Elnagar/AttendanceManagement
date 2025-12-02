@@ -18,7 +18,7 @@ namespace AttendanceManagement.Repositories
         {
             var query = await GetQueryableAsync();
             return query
-                .Where(sa => sa.EmployeeId == id && sa.EffectiveFrom <= DateTime.Now && (sa.EffectiveTo == null || sa.EffectiveTo >= DateTime.Now))
+                .Where(sa => sa.EmployeeId == id && sa.EffectiveFrom <= DateTime.UtcNow && (sa.EffectiveTo == null || sa.EffectiveTo >= DateTime.UtcNow))
                 .FirstOrDefault();
         }
 

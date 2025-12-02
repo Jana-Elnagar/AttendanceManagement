@@ -709,9 +709,9 @@
             EditingScheduleAssignment = new AssignScheduleDto
             {
                 EmployeeId = employeeId,
-                EffectiveFrom = DateTime.Today
+                EffectiveFrom = DateTime.UtcNow.Date
             };
-            EffectiveFromString = DateTime.Today.ToString("yyyy-MM-dd");
+            EffectiveFromString = DateTime.UtcNow.Date.ToString("yyyy-MM-dd");
             EffectiveToString = string.Empty;
             ScheduleAssignmentModalTitle = L["AssignSchedule"];
             await ScheduleAssignmentModal.Show();
@@ -829,7 +829,7 @@
                 return;
             }
 
-            await ScheduleAppService.EndScheduleAssignmentAsync(assignmentId, DateTime.Today);
+            await ScheduleAppService.EndScheduleAssignmentAsync(assignmentId, DateTime.UtcNow.Date);
             await MessageService.Success(L["ScheduleAssignmentEndedSuccessfully"]);
 
             if (SelectedEmployeeDetails != null)
@@ -936,7 +936,7 @@
             StateHasChanged();
 
             var fileBytes = await EmployeeAppService.ExportToExcelAsync();
-            var fileName = $"Employees_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"Employees_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
             await JSRuntime.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(fileBytes));
 
             await MessageService.Success(L["SuccessfullyExported"]);
