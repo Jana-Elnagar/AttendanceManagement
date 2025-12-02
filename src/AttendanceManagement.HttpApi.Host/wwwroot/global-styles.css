@@ -9,3 +9,29 @@
 .lpx-language-selection .dropdown-toggle .lpx-icon {
     color: var(--ejada-primary) !important;
 }
+/* Sidebar background */
+.lpx-sidebar,
+.lpx-nav-menu,
+.lpx-menu-container {
+    background-color: #F8F8FF !important; /* Ghost White background */
+    border-right: 1px solid #e5e7eb !important;
+}
+
+/* Logo container */
+.lpx-logo-container {
+    background-color: #F8F8FF !important; /* Ghost White */
+    border-bottom: 1px solid #e5e7eb !important;
+    padding: 1rem !important;
+}
+
+/*Changing default bg color*/
+.lpx-content-container,
+.lpx-breadcrumb-container,
+.lpx-topbar-container,
+.lpx-topbar {
+    background-color: #F8F8FF !important
+}
+
+.lpx-brand-name.lpx-login-name {
+    font-family: Verdana, Geneva, sans-serif !important;
+}
