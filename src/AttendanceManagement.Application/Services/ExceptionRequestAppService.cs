@@ -180,7 +180,7 @@ namespace AttendanceManagement.Services
             int initialStepOrder = 1;
             if (input.Type == ExceptionRequestType.Sick)
             {
-                // For sick leave, find the first Doctor step
+                // For sick exception, find the first Doctor step
                 var firstDoctorStep = workflow.WorkflowSteps
                     .OrderBy(ws => ws.StepOrder)
                     .FirstOrDefault(ws => ws.ApproverType == ApproverType.Doctor);
@@ -192,7 +192,7 @@ namespace AttendanceManagement.Services
                 else
                 {
                     // If no Doctor step exists, start at step 1 (fallback)
-                    _logger.LogWarning($"Workflow {workflow.Id} does not have a Doctor step. Sick leave request will start at step 1.");
+                    _logger.LogWarning($"Workflow {workflow.Id} does not have a Doctor step. Sick exception request will start at step 1.");
                     initialStepOrder = 1;
                 }
             }
@@ -450,7 +450,7 @@ namespace AttendanceManagement.Services
                 // Check if step requires doctor approval
                 if (currentStep.ApproverType == ApproverType.Doctor)
                 {
-                    // Doctors should only see sick leave requests at doctor steps
+                    // Doctors should only see sick exception requests at doctor steps
                     if (canApproveAsDoctor && er.Type == ExceptionRequestType.Sick)
                     {
                         _logger.LogDebug($"Request {er.Id}: Doctor step - INCLUDED");

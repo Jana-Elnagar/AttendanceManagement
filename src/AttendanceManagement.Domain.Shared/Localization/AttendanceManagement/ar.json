@@ -77,7 +77,7 @@
     "NewExceptionRequest": "طلب استثناء جديد",
     "ExceptionDate": "تاريخ الاستثناء",
     "Type": "النوع",
-    "Sick": "إجازة مرضية",
+    "Sick": "استثناء طبي",
     "SpecialCondition": "حالة خاصة",
     "Reason": "السبب",
     "Date": "التاريخ",
@@ -101,7 +101,7 @@
     "CurrentStep": "الخطوة الحالية",
     "NoPendingApprovals": "لا توجد موافقات معلقة في الوقت الحالي.",
     "OnlyScheduledOnsiteDays": "يمكنك طلب الاستثناء فقط للأيام المجدولة للحضور في الموقع.",
-    "SickRequestRequiresMedicalDocument": "طلبات الإجازة المرضية تتطلب وثائق طبية.",
+    "SickRequestRequiresMedicalDocument": "طلبات الاستثناء الطبي تتطلب وثائق طبية.",
     "MedicalDocument": "الوثيقة الطبية",
     "AllowedFileTypes": "أنواع الملفات المسموحة",
 

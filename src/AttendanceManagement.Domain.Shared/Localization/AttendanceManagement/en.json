@@ -77,7 +77,7 @@
     "NewExceptionRequest": "New Exception Request",
     "ExceptionDate": "Exception Date",
     "Type": "Type",
-    "Sick": "Sick Leave",
+    "Sick": "Sick Exception",
     "SpecialCondition": "Special Condition",
     "Reason": "Reason",
     "Date": "Date",
@@ -101,7 +101,7 @@
     "CurrentStep": "Current Step",
     "NoPendingApprovals": "No pending approvals at this time.",
     "OnlyScheduledOnsiteDays": "You can only request exceptions for scheduled on-site days.",
-    "SickRequestRequiresMedicalDocument": "Sick leave requests require medical documentation.",
+    "SickRequestRequiresMedicalDocument": "Sick exception requests require medical documentation.",
     "MedicalDocument": "Medical Document",
     "AllowedFileTypes": "Allowed file types",
 

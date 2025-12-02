@@ -87,6 +87,7 @@ body.abp-application-layout {
     --ejada-primary-light: #dbeafe;
     --ejada-success: #16a34a;
     --ejada-warning: #f97316;
+    --lpx-brand: var(--ejada-primary) !important;
 }
 
 .btn-primary {
@@ -339,4 +340,133 @@ html body .form-switch .form-check-input:checked {
 .dropdown-menu {
     --bs-dropdown-link-active-bg: var(--ejada-primary) !important;
     --bs-dropdown-header-color: var(--ejada-primary) !important;
+    --bs-dropdown-link-hover-bg: var(--ejada-primary-light) !important;
+    --bs-dropdown-link-hover-color: var(--ejada-primary) !important;
+    --bs-dropdown-link-active-color: #ffffff !important;
+}
+
+/* Set Bootstrap CSS variables for dropdowns globally */
+:root {
+    --bs-dropdown-link-active-bg: var(--ejada-primary) !important;
+    --bs-dropdown-link-hover-bg: var(--ejada-primary-light) !important;
+    --bs-dropdown-link-hover-color: var(--ejada-primary) !important;
+    --bs-dropdown-link-active-color: #ffffff !important;
+}
+
+/* Select component styling - Selected option with maximum specificity */
+html body select.form-select:focus,
+html body select.form-control:focus,
+html body .b-select select:focus,
+html body select:focus,
+body select.form-select:focus,
+body select.form-control:focus,
+body .b-select select:focus,
+body select:focus {
+    border-color: var(--ejada-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(0, 15, 125, 0.25) !important;
+}
+
+/* Select option hover and selected states - Maximum specificity */
+html body select.form-select option:hover,
+html body select.form-control option:hover,
+html body select option:hover,
+body select.form-select option:hover,
+body select.form-control option:hover,
+body select option:hover {
+    background-color: var(--ejada-primary-light) !important;
+}
+
+html body select.form-select option:checked,
+html body select.form-control option:checked,
+html body select option:checked,
+body select.form-select option:checked,
+body select.form-control option:checked,
+body select option:checked {
+    background-color: var(--ejada-primary) !important;
+    color: #ffffff !important;
+}
+
+/* For Blazorise Select component wrapper */
+html body .b-select .form-select,
+html body .b-select select,
+body .b-select .form-select,
+body .b-select select {
+    border-color: #dee2e6 !important;
+}
+
+html body .b-select .form-select:focus,
+html body .b-select select:focus,
+body .b-select .form-select:focus,
+body .b-select select:focus {
+    border-color: var(--ejada-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(0, 15, 125, 0.25) !important;
+}
+
+/* Select dropdown arrow color */
+html body select.form-select,
+html body select.form-control,
+body select.form-select,
+body select.form-control {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23000f7d' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+}
+
+/* Blazorise Select dropdown menu items - Target the actual dropdown */
+html body .dropdown-menu .dropdown-item.active,
+html body .dropdown-menu .dropdown-item:active,
+html body .dropdown-menu .dropdown-item.selected,
+html body .dropdown-menu .dropdown-item[aria-selected="true"],
+body .dropdown-menu .dropdown-item.active,
+body .dropdown-menu .dropdown-item:active,
+body .dropdown-menu .dropdown-item.selected,
+body .dropdown-menu .dropdown-item[aria-selected="true"] {
+    background-color: var(--ejada-primary) !important;
+    color: #ffffff !important;
+}
+
+html body .dropdown-menu .dropdown-item:hover,
+body .dropdown-menu .dropdown-item:hover {
+    background-color: var(--ejada-primary-light) !important;
+    color: var(--ejada-primary) !important;
+}
+
+/* Blazorise SelectItem styling */
+html body .b-select-item.active,
+html body .b-select-item.selected,
+html body .b-select-item[aria-selected="true"],
+body .b-select-item.active,
+body .b-select-item.selected,
+body .b-select-item[aria-selected="true"] {
+    background-color: var(--ejada-primary) !important;
+    color: #ffffff !important;
+}
+
+html body .b-select-item:hover,
+body .b-select-item:hover {
+    background-color: var(--ejada-primary-light) !important;
+    color: var(--ejada-primary) !important;
+}
+
+/* Override Bootstrap dropdown active state */
+html body .dropdown-item.active,
+html body .dropdown-item:active,
+body .dropdown-item.active,
+body .dropdown-item:active {
+    background-color: var(--ejada-primary) !important;
+    color: #ffffff !important;
+}
+
+/* Target any element with aria-selected (common in custom dropdowns) */
+html body [aria-selected="true"],
+body [aria-selected="true"] {
+    background-color: var(--ejada-primary) !important;
+    color: #ffffff !important;
+}
+
+/* Target any element with selected class or attribute */
+html body .selected,
+html body [selected],
+body .selected,
+body [selected] {
+    background-color: var(--ejada-primary) !important;
+    color: #ffffff !important;
 }
