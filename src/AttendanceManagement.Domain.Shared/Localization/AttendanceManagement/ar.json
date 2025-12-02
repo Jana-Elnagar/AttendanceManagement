@@ -149,6 +149,7 @@
     "Select": "اختر",
 
     "ErrorLoadingSchedule": "خطأ في تحميل الجدول. يرجى المحاولة مرة أخرى.",
+    "ExternalUser": "مستخدم خارجي",
     "ExternalUserMessage": "تم تسجيل الدخول كمستخدم خارجي. معلومات الموظف غير متاحة.",
     "EmployeeRecordNotFound": "لم يتم العثور على سجل الموظف.",
     "UserInfo": "معلومات المستخدم",
@@ -171,7 +172,7 @@
     "NoScheduleAssignedMessage": "ليس لديك تعيين جدول نشط. يرجى الاتصال بمسؤولك.",
     "ExportError": "خطأ في تصدير الجدول",
     "FloorNumber": "رقم الطابق",
-    
+
     "Loading": "جاري التحميل...",
     "ManageWorkflowApprovalProcesses": "إدارة عمليات الموافقة على سير العمل",
     "NoWorkflowsAvailable": "لا توجد سير عمل متاحة.",

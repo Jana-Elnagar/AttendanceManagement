@@ -149,6 +149,7 @@
     "Select": "Select",
 
     "ErrorLoadingSchedule": "Error loading schedule. Please try again.",
+    "ExternalUser": "External User",
     "ExternalUserMessage": "External User. Employee-specific Information is Unavailable.",
     "EmployeeRecordNotFound": "Employee record not found.",
     "UserInfo": "User Information",
@@ -171,7 +172,7 @@
     "NoScheduleAssignedMessage": "You don't have an active schedule assignment. Please contact your administrator.",
     "ExportError": "Error exporting schedule",
     "FloorNumber": "Floor Number",
-    
+
     "Loading": "Loading...",
     "ManageWorkflowApprovalProcesses": "Manage workflow approval processes",
     "NoWorkflowsAvailable": "No workflows available.",
