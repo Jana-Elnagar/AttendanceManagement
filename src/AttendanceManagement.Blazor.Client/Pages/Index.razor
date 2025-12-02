@@ -39,7 +39,22 @@
                                 <Icon Name="IconName.User" IconSize="IconSize.x2" Color="Color.Primary" />
                             </div>
                             <h5 class="mb-1 fw-bold">@CurrentEmployeeDetails.Name</h5>
-                            <p class="text-muted small mb-0">@CurrentEmployeeDetails.UserId</p>
+                        </div>
+
+                        <div class="employee-info-item">
+                            <div class="employee-info-label">
+                                <Icon Name="IconName.Mail" Margin="Margin.Is1.FromEnd" />
+                                @L["Email"]
+                            </div>
+                            <div class="employee-info-value">@(!string.IsNullOrEmpty(CurrentEmployeeDetails.Email) ? CurrentEmployeeDetails.Email : "-")</div>
+                        </div>
+
+                        <div class="employee-info-item">
+                            <div class="employee-info-label">
+                                <Icon Name="IconName.IdCard" Margin="Margin.Is1.FromEnd" />
+                                @L["CompanyId"]
+                            </div>
+                            <div class="employee-info-value">@(!string.IsNullOrEmpty(CurrentEmployeeDetails.CompanyId) ? CurrentEmployeeDetails.CompanyId : "-")</div>
                         </div>
 
                         <div class="employee-info-item">

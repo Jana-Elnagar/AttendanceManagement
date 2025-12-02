@@ -18,6 +18,8 @@ namespace AttendanceManagement.Data.Employees
         public string Name { get; set; }
         public string Department { get; set; }
         public string Sector { get; set; }
+        public string Email { get; set; }
+        public string CompanyId { get; set; } // Unique identifier per employee (not used as primary key)
         public bool IsActive { get; set; }
         public Guid? GroupId { get; set; } // Each employee belongs to only one group
         public Guid? WorkflowId { get; set; } // Admin assigns workflow based on hierarchy
@@ -39,13 +41,15 @@ namespace AttendanceManagement.Data.Employees
             ExceptionRequests = new List<ExceptionRequest>();
         }
 
-        public Employee(Guid id, Guid userId, string name, string department, string sector, Guid? groupId = null)
+        public Employee(Guid id, Guid userId, string name, string department, string sector, Guid? groupId = null, string email = null, string companyId = null)
             : base(id)
         {
             UserId = userId;
             Name = name;
             Department = department;
             Sector = sector;
+            Email = email;
+            CompanyId = companyId;
             GroupId = groupId;
             IsActive = true;
 

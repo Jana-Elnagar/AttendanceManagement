@@ -30,6 +30,11 @@ namespace AttendanceManagement.EntityFrameworkCore
                 b.Property(e => e.Name).IsRequired().HasMaxLength(256);
                 b.Property(e => e.Department).HasMaxLength(256);
                 b.Property(e => e.Sector).HasMaxLength(256);
+                b.Property(e => e.Email).IsRequired().HasMaxLength(256);
+                b.Property(e => e.CompanyId).IsRequired().HasMaxLength(100);
+
+                // Unique constraint on CompanyId
+                b.HasIndex(e => e.CompanyId).IsUnique().HasFilter("[CompanyId] IS NOT NULL");
 
                 b.HasOne(e => e.User)
                     .WithMany()

@@ -376,7 +376,9 @@ namespace AttendanceManagement.Data
                 "HR Manager",
                 "Human Resources",
                 "HR Sector",
-                groups["management"].Id
+                groups["management"].Id,
+                "hr@attendance.com",
+                "Y1001"
             )
             {
                 ManagerAssignments = new List<ManagerAssignment>(),
@@ -394,7 +396,9 @@ namespace AttendanceManagement.Data
                 "John Manager",
                 "Engineering",
                 "Software Development",
-                groups["management"].Id
+                groups["management"].Id,
+                "manager1@attendance.com",
+                "Y2001"
             )
             {
                 ManagerAssignments = new List<ManagerAssignment>(),
@@ -411,7 +415,9 @@ namespace AttendanceManagement.Data
                 "Sarah Manager",
                 "Marketing",
                 "Digital Marketing",
-                groups["management"].Id
+                groups["management"].Id,
+                "manager2@attendance.com",
+                "Y2002"
             )
             {
                 ManagerAssignments = new List<ManagerAssignment>(),
@@ -429,7 +435,9 @@ namespace AttendanceManagement.Data
                 "Alice Employee",
                 "Engineering",
                 "Software Development",
-                groups["engineering"].Id
+                groups["engineering"].Id,
+                "emp1@attendance.com",
+                "Y3001"
             )
             {
                 ManagerAssignments = new List<ManagerAssignment>(),
@@ -446,7 +454,9 @@ namespace AttendanceManagement.Data
                 "Bob Employee",
                 "Engineering",
                 "Software Development",
-                groups["engineering"].Id
+                groups["engineering"].Id,
+                "emp2@attendance.com",
+                "Y3002"
             )
             {
                 ManagerAssignments = new List<ManagerAssignment>(),
@@ -464,7 +474,9 @@ namespace AttendanceManagement.Data
                 "Charlie Employee",
                 "Marketing",
                 "Digital Marketing",
-                groups["marketing"].Id
+                groups["marketing"].Id,
+                "emp3@attendance.com",
+                "Y4001"
             )
             {
                 ManagerAssignments = new List<ManagerAssignment>(),
@@ -481,7 +493,9 @@ namespace AttendanceManagement.Data
                 "Diana Employee",
                 "Marketing",
                 "Digital Marketing",
-                groups["marketing"].Id
+                groups["marketing"].Id,
+                "emp4@attendance.com",
+                "Y4002"
             )
             {
                 ManagerAssignments = new List<ManagerAssignment>(),
@@ -498,7 +512,9 @@ namespace AttendanceManagement.Data
                 "Eve Employee",
                 "Engineering",
                 "Software Development",
-                groups["engineering"].Id
+                groups["engineering"].Id,
+                "emp5@attendance.com",
+                "Y4003"
             )
             {
                 ManagerAssignments = new List<ManagerAssignment>(),

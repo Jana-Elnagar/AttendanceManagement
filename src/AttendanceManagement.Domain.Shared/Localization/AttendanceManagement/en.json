@@ -22,6 +22,8 @@
     "EditEmployee": "Edit Employee",
     "EmployeeDetails": "Employee Details",
     "Name": "Name",
+    "Email": "Email",
+    "CompanyId": "Company ID",
     "Department": "Department",
     "Sector": "Sector",
     "Group": "Group",

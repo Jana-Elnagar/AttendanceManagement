@@ -13,6 +13,8 @@ namespace AttendanceManagement.Dtos.Employees
         public string Name { get; set; }
         public string Department { get; set; }
         public string Sector { get; set; }
+        public string Email { get; set; }
+        public string CompanyId { get; set; }
         public bool IsActive { get; set; }
         public Guid? GroupId { get; set; }
         public string GroupName { get; set; }

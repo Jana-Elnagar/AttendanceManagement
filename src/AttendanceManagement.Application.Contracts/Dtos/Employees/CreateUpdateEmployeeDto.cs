@@ -22,6 +22,13 @@ namespace AttendanceManagement.Dtos.Employees
         [StringLength(100, ErrorMessage = "Sector cannot exceed 100 characters")]
         public string Sector { get; set; }
 
+        [EmailAddress(ErrorMessage = "Invalid email address")]
+        [StringLength(256, ErrorMessage = "Email cannot exceed 256 characters")]
+        public string Email { get; set; }
+
+        [StringLength(100, ErrorMessage = "Company ID cannot exceed 100 characters")]
+        public string CompanyId { get; set; }
+
         public Guid? GroupId { get; set; }
 
         public Guid? WorkflowId { get; set; }

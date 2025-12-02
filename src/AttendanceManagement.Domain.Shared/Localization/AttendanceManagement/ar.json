@@ -22,6 +22,8 @@
     "EditEmployee": "تعديل الموظف",
     "EmployeeDetails": "تفاصيل الموظف",
     "Name": "الاسم",
+    "Email": "البريد الإلكتروني",
+    "CompanyId": "معرف الشركة",
     "Department": "القسم",
     "Sector": "القطاع",
     "Group": "المجموعة",

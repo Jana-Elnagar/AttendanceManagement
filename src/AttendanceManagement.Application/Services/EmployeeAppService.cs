@@ -215,6 +215,16 @@ namespace AttendanceManagement.Services
                 throw new UserFriendlyException("An employee with this user already exists.");
             }
 
+            // Check if CompanyId is provided and if it's unique
+            if (!string.IsNullOrWhiteSpace(input.CompanyId))
+            {
+                var existingCompanyId = await Repository.FirstOrDefaultAsync(e => e.CompanyId == input.CompanyId);
+                if (existingCompanyId != null)
+                {
+                    throw new UserFriendlyException("An employee with this Company ID already exists.");
+                }
+            }
+
             // Validate GroupId if provided
             if (input.GroupId.HasValue)
             {
@@ -241,7 +251,9 @@ namespace AttendanceManagement.Services
                 input.Name,
                 input.Department,
                 input.Sector,
-                input.GroupId
+                input.GroupId,
+                input.Email,
+                input.CompanyId
             );
 
             if (input.WorkflowId.HasValue)
@@ -262,6 +274,16 @@ namespace AttendanceManagement.Services
             if (existingEmployee != null)
             {
                 throw new UserFriendlyException("Another employee with this user already exists.");
+            }
+
+            // Check if CompanyId is provided and if it's unique (excluding current employee)
+            if (!string.IsNullOrWhiteSpace(input.CompanyId))
+            {
+                var existingCompanyId = await Repository.FirstOrDefaultAsync(e => e.CompanyId == input.CompanyId && e.Id != id);
+                if (existingCompanyId != null)
+                {
+                    throw new UserFriendlyException("Another employee with this Company ID already exists.");
+                }
             }
 
             // Validate GroupId if provided
@@ -287,6 +309,8 @@ namespace AttendanceManagement.Services
             employee.Name = input.Name;
             employee.Department = input.Department;
             employee.Sector = input.Sector;
+            employee.Email = input.Email;
+            employee.CompanyId = input.CompanyId;
             employee.AssignToGroup(input.GroupId);
             employee.AssignWorkflow(input.WorkflowId);
 
@@ -311,20 +335,21 @@ namespace AttendanceManagement.Services
                 worksheet.Cell(1, 1).Value = "Employees List";
                 worksheet.Cell(1, 1).Style.Font.FontSize = 16;
                 worksheet.Cell(1, 1).Style.Font.Bold = true;
-                worksheet.Range(1, 1, 1, 7).Merge();
+                worksheet.Range(1, 1, 1, 8).Merge();
 
                 // Headers
                 var headerRow = 3;
                 worksheet.Cell(headerRow, 1).Value = "Name";
-                worksheet.Cell(headerRow, 2).Value = "Department";
-                worksheet.Cell(headerRow, 3).Value = "Sector";
-                worksheet.Cell(headerRow, 4).Value = "Group";
-                worksheet.Cell(headerRow, 5).Value = "Workflow";
-                worksheet.Cell(headerRow, 6).Value = "Status";
-                worksheet.Cell(headerRow, 7).Value = "User ID";
+                worksheet.Cell(headerRow, 2).Value = "Email";
+                worksheet.Cell(headerRow, 3).Value = "Company ID";
+                worksheet.Cell(headerRow, 4).Value = "Department";
+                worksheet.Cell(headerRow, 5).Value = "Sector";
+                worksheet.Cell(headerRow, 6).Value = "Group";
+                worksheet.Cell(headerRow, 7).Value = "Workflow";
+                worksheet.Cell(headerRow, 8).Value = "Status";
 
                 // Style headers
-                var headerRange = worksheet.Range(headerRow, 1, headerRow, 7);
+                var headerRange = worksheet.Range(headerRow, 1, headerRow, 8);
                 headerRange.Style.Font.Bold = true;
                 headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
                 headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
@@ -334,12 +359,13 @@ namespace AttendanceManagement.Services
                 foreach (var employee in employees)
                 {
                     worksheet.Cell(row, 1).Value = employee.Name;
-                    worksheet.Cell(row, 2).Value = employee.Department ?? "-";
-                    worksheet.Cell(row, 3).Value = employee.Sector ?? "-";
-                    worksheet.Cell(row, 4).Value = employee.Group?.Name ?? "-";
-                    worksheet.Cell(row, 5).Value = employee.Workflow?.Name ?? "-";
-                    worksheet.Cell(row, 6).Value = employee.IsActive ? "Active" : "Inactive";
-                    worksheet.Cell(row, 7).Value = employee.UserId.ToString();
+                    worksheet.Cell(row, 2).Value = employee.Email ?? "-";
+                    worksheet.Cell(row, 3).Value = employee.CompanyId ?? "-";
+                    worksheet.Cell(row, 4).Value = employee.Department ?? "-";
+                    worksheet.Cell(row, 5).Value = employee.Sector ?? "-";
+                    worksheet.Cell(row, 6).Value = employee.Group?.Name ?? "-";
+                    worksheet.Cell(row, 7).Value = employee.Workflow?.Name ?? "-";
+                    worksheet.Cell(row, 8).Value = employee.IsActive ? "Active" : "Inactive";
                     row++;
                 }
 

@@ -180,6 +180,14 @@
                         <TextEdit @bind-Text="@EditingEmployee.Sector" Placeholder="Enter sector" />
                     </Field>
                     <Field>
+                        <FieldLabel>@L["Email"]</FieldLabel>
+                        <TextEdit @bind-Text="@EditingEmployee.Email" Placeholder="Enter email address" Type="InputType.Email" />
+                    </Field>
+                    <Field>
+                        <FieldLabel>@L["CompanyId"]</FieldLabel>
+                        <TextEdit @bind-Text="@EditingEmployee.CompanyId" Placeholder="Enter company ID" />
+                    </Field>
+                    <Field>
                         <FieldLabel>@L["Group"]</FieldLabel>
                         <Select TValue="Guid?" @bind-SelectedValue="@EditingEmployee.GroupId">
                             <SelectItem Value="@((Guid?)null)">-- @L["Select"] --</SelectItem>
@@ -242,6 +250,18 @@
                     <FieldLabel ColumnSize="ColumnSize.Is3">@L["Sector"]</FieldLabel>
                     <FieldBody ColumnSize="ColumnSize.Is9">
                         <Text>@SelectedEmployeeDetails.Sector</Text>
+                    </FieldBody>
+                </Field>
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["Email"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        <Text>@(SelectedEmployeeDetails.Email ?? "-")</Text>
+                    </FieldBody>
+                </Field>
+                <Field Horizontal="true">
+                    <FieldLabel ColumnSize="ColumnSize.Is3">@L["CompanyId"]</FieldLabel>
+                    <FieldBody ColumnSize="ColumnSize.Is9">
+                        <Text>@(SelectedEmployeeDetails.CompanyId ?? "-")</Text>
                     </FieldBody>
                 </Field>
                 <Field Horizontal="true">
@@ -547,6 +567,8 @@
                 Name = employee.Name,
                 Department = employee.Department,
                 Sector = employee.Sector,
+                Email = employee.Email,
+                CompanyId = employee.CompanyId,
                 GroupId = employee.GroupId,
                 WorkflowId = employee.WorkflowId
             };
